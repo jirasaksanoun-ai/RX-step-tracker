@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Step Tracker</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      background: #0a0a0a;
+      color: #f0f0f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-card: #111111;
+      --bg-elevated: #1a1a1a;
+      --accent: #c8f135;
+      --accent-dim: rgba(200,241,53,0.12);
+      --accent-glow: rgba(200,241,53,0.35);
+      --text-primary: #f0f0f0;
+      --text-secondary: #888;
+      --text-muted: #444;
+      --border: rgba(255,255,255,0.07);
+      --danger: #ff4d4d;
+      --info: #4d9fff;
+      --radius: 20px;
+    }
+
+    /* ---------- ANIMATED BACKGROUND ---------- */
+    .app-bg {
+      position: fixed; inset: 0; z-index: 0;
+      background: #0a0a0a; overflow: hidden;
+    }
+    .app-bg::before {
+      content: ''; position: absolute;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,241,53,0.06) 0%, transparent 70%);
+      top: -200px; right: -200px;
+      animation: driftBg 12s ease-in-out infinite alternate;
+    }
+    .app-bg::after {
+      content: ''; position: absolute;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(77,159,255,0.04) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+      animation: driftBg 16s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes driftBg {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(40px,30px) scale(1.1); }
+    }
+
+    /* ---------- LAYOUT ---------- */
+    .app-shell {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 0 40px;
+      max-width: 430px; margin: 0 auto;
+    }
+
+    /* ---------- LOGIN ---------- */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; width: 100%;
+    }
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 28px; padding: 40px 32px;
+      animation: slideUp 0.5s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    .login-logo {
+      width: 64px; height: 64px;
+      background: var(--accent); border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px; font-size: 28px;
+    }
+    .login-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px; letter-spacing: 2px;
+      color: var(--text-primary); text-align: center; line-height: 1;
+    }
+    .login-sub {
+      font-size: 13px; color: var(--text-secondary);
+      text-align: center; margin-top: 6px; margin-bottom: 36px; font-weight: 300;
+    }
+    .input-field {
+      width: 100%; background: var(--bg-elevated);
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 16px 20px; font-size: 20px; font-weight: 500;
+      color: var(--text-primary); text-align: center; letter-spacing: 6px;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .input-field::placeholder { letter-spacing: 1px; font-size: 14px; color: var(--text-muted); }
+    .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-dim); }
+    .btn-primary {
+      width: 100%; margin-top: 16px;
+      background: var(--accent); color: #0a0a0a; border: none;
+      border-radius: 14px; padding: 17px;
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      font-size: 15px; font-weight: 700; letter-spacing: 0.5px;
+      cursor: pointer; transition: transform 0.12s, box-shadow 0.2s, opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.92; box-shadow: 0 0 28px var(--accent-glow); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ---------- TOP BAR ---------- */
+    .top-bar {
+      width: 100%; padding: 20px 20px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .top-bar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--accent); }
+    .top-bar-name { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-secondary);
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-btn:hover { background: var(--border); color: var(--text-primary); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    /* ---------- TAB NAV ---------- */
+    .tab-nav { width: 100%; padding: 14px 20px 0; display: flex; gap: 8px; }
+    .tab-btn {
+      flex: 1; padding: 10px; border-radius: 12px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-secondary);
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ---------- STATS STRIP ---------- */
+    .stats-strip {
+      width: 100%; padding: 16px 20px 0;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+    }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 14px 12px; text-align: center;
+      animation: slideUp 0.4s both;
+    }
+    .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text-primary); line-height: 1; }
+    .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ---------- GOAL RING ---------- */
+    .ring-wrap { width: 100%; padding: 20px 20px 0; display: flex; justify-content: center; }
+    .ring-container {
+      position: relative; width: 240px; height: 240px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring-svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--bg-elevated); stroke-width: 10; }
+    .ring-progress {
+      fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round;
+      stroke-dasharray: 628; stroke-dashoffset: 628;
+      transition: stroke-dashoffset 0.6s cubic-bezier(.22,.68,0,1.2);
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+    .ring-inner { z-index: 1; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .ring-steps { font-family: 'Bebas Neue', sans-serif; font-size: 64px; line-height: 1; color: var(--text-primary); }
+    .ring-unit { font-size: 13px; color: var(--text-muted); letter-spacing: 2px; }
+    .ring-status { font-size: 11px; color: var(--text-secondary); margin-top: 4px; letter-spacing: 1px; }
+
+    @keyframes ringPulse {
+      0%,100% { filter: drop-shadow(0 0 6px var(--accent-glow)); }
+      50%      { filter: drop-shadow(0 0 18px var(--accent-glow)) drop-shadow(0 0 32px rgba(200,241,53,0.2)); }
+    }
+    .ring-progress.walking { animation: ringPulse 1.8s ease-in-out infinite; }
+
+    /* ---------- SESSION METRICS ---------- */
+    .metrics-row {
+      width: 100%; padding: 14px 20px 0;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .metric-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .metric-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .metric-icon svg { width: 18px; height: 18px; }
+    .metric-val { font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .metric-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* ---------- GOAL BAR ---------- */
+    .goal-wrap { width: 100%; padding: 14px 20px 0; }
+    .goal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+    .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .goal-title { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .goal-pct { font-size: 12px; color: var(--accent); font-weight: 600; }
+    .goal-bar-bg { height: 6px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+    .goal-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), #a8e023);
+      box-shadow: 0 0 8px var(--accent-glow);
+      transition: width 0.6s cubic-bezier(.22,.68,0,1.2);
+    }
+    .goal-sub { font-size: 11px; color: var(--text-muted); margin-top: 8px; display: flex; justify-content: space-between; }
+
+    /* ---------- DEBUG ---------- */
+    .debug-strip { width: 100%; padding: 10px 20px 0; }
+    .debug-card {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px;
+      font-size: 10px; color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .debug-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      background: var(--text-muted); transition: background 0.3s;
+    }
+    .debug-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); animation: blink 1s infinite; }
+    .debug-dot.error  { background: var(--danger); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ---------- CONTROLS ---------- */
+    .controls-wrap { width: 100%; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+    .btn-start {
+      width: 100%; padding: 18px; border-radius: 16px; border: none;
+      background: var(--accent); color: #0a0a0a;
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+      cursor: pointer; transition: transform 0.12s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-start svg { width: 20px; height: 20px; }
+    .btn-start:hover { box-shadow: 0 0 32px var(--accent-glow); }
+    .btn-start:active { transform: scale(0.97); }
+    .btn-start.paused {
+      background: var(--bg-elevated); color: #f5d000;
+      border: 1.5px solid #f5d000; box-shadow: none;
+    }
+    .btn-save {
+      width: 100%; padding: 17px; border-radius: 16px;
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted);
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      font-size: 15px; font-weight: 600; cursor: not-allowed; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-save svg { width: 18px; height: 18px; }
+    .btn-save.ready { border-color: var(--accent); color: var(--accent); cursor: pointer; background: var(--accent-dim); }
+    .btn-save.ready:hover { box-shadow: 0 0 20px var(--accent-dim); }
+    .btn-save.ready:active { transform: scale(0.97); }
+    .btn-sim {
+      width: 100%; padding: 8px; background: none; border: none;
+      font-size: 11px; color: var(--text-muted); cursor: pointer;
+      text-decoration: underline; font-family: 'DM Sans', 'Sarabun', sans-serif;
+      transition: color 0.2s;
+    }
+    .btn-sim:hover { color: var(--text-secondary); }
+    .btn-sim.urgent { color: var(--danger); animation: blink 1s infinite; }
+
+    /* ---------- HISTORY ---------- */
+    .history-wrap { width: 100%; padding: 14px 20px 0; flex: 1; }
+    .history-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px; }
+    .history-empty .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .history-item {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 14px; align-items: center; animation: slideUp 0.3s both;
+    }
+    .history-date-box { background: var(--bg-elevated); border-radius: 10px; padding: 8px 10px; text-align: center; min-width: 48px; }
+    .history-day { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--text-primary); line-height: 1; }
+    .history-mon { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .history-info-steps { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+    .history-info-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .history-badge { font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--accent-dim); color: var(--accent); }
+    .history-badge.miss { background: rgba(255,77,77,0.1); color: var(--danger); }
+
+    /* ---------- POPUP ---------- */
+    .popup-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; animation: fadeIn 0.2s both;
+    }
+    .popup-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 24px; width: 100%; max-width: 360px;
+      padding: 32px 28px; animation: slideUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    .popup-avatar {
+      width: 72px; height: 72px; background: var(--accent);
+      border-radius: 20px; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: #0a0a0a;
+    }
+    .popup-name { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; text-align: center; }
+    .popup-pos { font-size: 13px; color: var(--accent); text-align: center; margin-bottom: 20px; }
+    .popup-info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .popup-info-row:last-child { border-bottom: none; }
+    .popup-info-label { color: var(--text-secondary); }
+    .popup-info-val { color: var(--text-primary); font-weight: 600; }
+    .popup-steps-banner {
+      margin-top: 16px; background: var(--accent-dim);
+      border: 1px solid rgba(200,241,53,0.2); border-radius: 14px; padding: 14px; text-align: center;
+    }
+    .popup-steps-num { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--accent); line-height: 1; }
+    .popup-steps-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .popup-close-btn {
+      width: 100%; margin-top: 20px; padding: 15px;
+      background: var(--accent); color: #0a0a0a; border: none; border-radius: 14px;
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+    }
+    .popup-close-btn:hover { opacity: 0.9; }
+
+    /* ---------- GOAL MODAL ---------- */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: fadeIn 0.2s both;
+    }
+    .modal-sheet {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 24px 24px 0 0; width: 100%; max-width: 430px;
+      padding: 28px 24px 40px; animation: slideUpSheet 0.3s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    .modal-handle { width: 36px; height: 4px; background: var(--text-muted); border-radius: 99px; margin: 0 auto 20px; }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary); }
+    .goal-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .goal-option {
+      padding: 14px; background: var(--bg-elevated);
+      border: 1.5px solid var(--border); border-radius: 14px;
+      text-align: center; cursor: pointer; transition: all 0.2s;
+      font-family: 'DM Sans', 'Sarabun', sans-serif;
+    }
+    .goal-option:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .goal-option.selected { border-color: var(--accent); background: var(--accent-dim); }
+    .goal-option-val { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text-primary); }
+    .goal-option-label { font-size: 11px; color: var(--text-muted); }
+    .modal-close {
+      width: 100%; padding: 15px; background: var(--accent); color: #0a0a0a;
+      border: none; border-radius: 14px;
+      font-family: 'DM Sans', 'Sarabun', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+
+    /* ---------- CONFIG BANNER ---------- */
+    .config-banner {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .config-card {
+      background: var(--bg-card); border: 1px solid rgba(255,77,77,0.3);
+      border-radius: 24px; width: 100%; max-width: 380px; padding: 32px 28px;
+      animation: slideUp 0.4s both;
+    }
+    .config-icon { font-size: 36px; text-align: center; margin-bottom: 16px; }
+    .config-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px; text-align: center; margin-bottom: 8px; color: var(--danger); }
+    .config-desc { font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 24px; line-height: 1.7; }
+    .config-input-wrap { margin-bottom: 16px; }
+    .config-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .config-input {
+      width: 100%; background: var(--bg-elevated); border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; font-size: 13px;
+      color: var(--text-primary); outline: none; font-family: 'DM Sans', sans-serif;
+    }
+    .config-input:focus { border-color: var(--accent); }
+    .config-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ---------- ANIMATIONS ---------- */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideUpSheet {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes stepFlash {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.07); }
+      100% { transform: scale(1); }
+    }
+    .step-flash { animation: stepFlash 0.25s ease-out; }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(0,0,0,0.2); border-top-color: #0a0a0a;
+      border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* ============================================================
+   CONFIGURATION — แก้ไข GAS_URL ก่อนใช้งาน
+   ============================================================ */
+var CONFIG = {
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbwlRm4xZAU2Ewu12U6E1dNg33uwou5fYSkfFWklzp56HgvbAu-wpE_9PSTNpq2hBU0MfA/exec'
+};
+
+/* ============================================================
+   APP STATE
+   ============================================================ */
+var appState = {
+  user: null,
+  stats: { steps: 0, calories: '0', distance: '0' },
+  sessionSteps: 0,
+  isWalking: false,
+  intervalId: null,
+  isSensorWorking: false,
+  sensorCheckTimeout: null,
+  dailyGoal: parseInt(localStorage.getItem('daily_goal') || '10000'),
+  currentView: 'dashboard',
+  history: [],
+
+  // ---- Low-Pass Filter state ----
+  lpfValue: 0,
+  lpfAlpha: 0.1,       // น้ำหนักข้อมูลใหม่ (0.1 = เรียบมาก, 0.3 = ตอบสนองเร็ว)
+
+  // ---- Peak Detection state ----
+  prevFiltered: 0,
+  prevDelta: 0,         // delta รอบก่อน (สำหรับตรวจจับ peak)
+  lastStepTime: 0,
+  stepCooldown: 350,    // ms ขั้นต่ำระหว่างก้าว
+
+  // ---- Dynamic Threshold state ----
+  recentMagnitudes: [], // buffer เก็บค่า magnitude ล่าสุด
+  thresholdWindow: 50,  // จำนวน sample สำหรับคำนวณ threshold
+  thresholdMultiplier: 1.1  // peak ต้องสูงกว่า mean × 1.1 จึงนับเป็นก้าว
+};
+
+/* ============================================================
+   API CALL — fetch to GAS via no-cors workaround
+   GAS ไม่รองรับ CORS บางกรณี จึงใช้ JSONP approach ผ่าน script tag
+   ============================================================ */
+var _callbackCounter = 0;
+
+function callGAS(action, payload, onSuccess, onError) {
+  if (!CONFIG.GAS_URL) {
+    onError({ message: 'ยังไม่ได้ตั้งค่า GAS URL' });
+    return;
+  }
+
+  var cbName = '__gasCallback_' + (++_callbackCounter);
+  var timeout = setTimeout(function() {
+    delete window[cbName];
+    onError({ message: 'Request timeout (30s) — ตรวจสอบ GAS URL หรือการ deploy' });
+  }, 30000);
+
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    delete window[cbName];
+    if (data.error) { onError({ message: data.error }); }
+    else { onSuccess(data); }
+  };
+
+  // สร้าง body ส่งไปผ่าน query param (JSONP)
+  // GAS doPost รับ postData ไม่ได้ผ่าน JSONP → ใช้ GET params แทน
+  var params = 'action=' + encodeURIComponent(action) +
+               '&payload=' + encodeURIComponent(JSON.stringify(payload)) +
+               '&callback=' + cbName;
+
+  var script = document.createElement('script');
+  script.src = CONFIG.GAS_URL + '?' + params;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    delete window[cbName];
+    document.body.removeChild(script);
+    onError({ message: 'ไม่สามารถเชื่อมต่อ GAS ได้ — ตรวจสอบ URL และ Deploy Settings' });
+  };
+  document.body.appendChild(script);
+}
+
+/* ============================================================
+   RENDER: CONFIG BANNER (ถ้ายังไม่มี GAS_URL)
+   ============================================================ */
+function renderConfigBanner() {
+  var div = document.createElement('div');
+  div.innerHTML = `
+    <div class="config-banner" id="configBanner">
+      <div class="config-card">
+        <div class="config-icon">⚙️</div>
+        <div class="config-title">ตั้งค่าครั้งแรก</div>
+        <div class="config-desc">
+          กรุณาใส่ URL ของ GAS Web App<br>
+          เพื่อเชื่อมต่อกับฐานข้อมูล Google Sheet
+        </div>
+        <div class="config-input-wrap">
+          <div class="config-label">GAS Web App URL</div>
+          <input type="url" id="gasUrlInput" class="config-input"
+            placeholder="https://script.google.com/macros/s/.../exec"
+            value="${CONFIG.GAS_URL}" />
+          <div class="config-hint">
+            GAS → Deploy → Manage deployments → Copy Web app URL
+          </div>
+        </div>
+        <button class="btn-primary" id="btnSaveConfig">บันทึกและเริ่มใช้งาน</button>
+        <div id="configErr" style="color:var(--danger);font-size:12px;text-align:center;margin-top:10px;min-height:16px;"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+
+  document.getElementById('btnSaveConfig').addEventListener('click', function() {
+    var url = document.getElementById('gasUrlInput').value.trim();
+    if (!url || !url.startsWith('https://script.google.com')) {
+      document.getElementById('configErr').innerText = 'URL ไม่ถูกต้อง ต้องขึ้นต้นด้วย https://script.google.com';
+      return;
+    }
+    CONFIG.GAS_URL = url;
+    localStorage.setItem('gas_url', url);
+    document.body.removeChild(div);
+    renderLogin();
+  });
+}
+
+/* ============================================================
+   RENDER: LOGIN
+   ============================================================ */
+function renderLogin() {
+  document.getElementById('root').innerHTML = `
+    <div class="app-bg"></div>
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-logo">🏃</div>
+        <h1 class="login-title">STEP<br>TRACKER</h1>
+        <p class="login-sub">ระบบนับก้าวเพื่อสุขภาพพนักงาน</p>
+        <input type="text" id="inputId" class="input-field"
+          placeholder="รหัสพนักงาน เช่น 1406"
+          autocomplete="off" inputmode="numeric" />
+        <button class="btn-primary" id="btnLogin">เข้าสู่ระบบ</button>
+        <div id="loginErr" style="color:var(--danger);font-size:13px;text-align:center;margin-top:12px;min-height:18px;"></div>
+        <button style="background:none;border:none;color:var(--text-muted);font-size:11px;width:100%;margin-top:16px;cursor:pointer;text-decoration:underline;" id="btnReconfig">⚙️ เปลี่ยน GAS URL</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnLogin').addEventListener('click', function() {
+    var id = document.getElementById('inputId').value.trim();
+    if (!id) { document.getElementById('loginErr').innerText = 'กรุณากรอกรหัสพนักงาน'; return; }
+    handleLogin(id);
+  });
+  document.getElementById('inputId').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('btnLogin').click();
+  });
+  document.getElementById('btnReconfig').addEventListener('click', function() {
+    CONFIG.GAS_URL = '';
+    localStorage.removeItem('gas_url');
+    renderConfigBanner();
+  });
+}
+
+/* ============================================================
+   RENDER: DASHBOARD
+   ============================================================ */
+function renderDashboard() {
+  var u = appState.user, stats = appState.stats;
+  var pct = Math.min(100, Math.round((appState.sessionSteps / appState.dailyGoal) * 100));
+  var circumference = 628;
+  var offset = circumference - (circumference * pct / 100);
+
+  document.getElementById('root').innerHTML = `
+    <div class="app-bg"></div>
+    <div class="app-shell">
+      <div class="top-bar">
+        <div>
+          <div class="top-bar-brand">STEP TRACKER</div>
+          <div class="top-bar-name">สวัสดี, ${u.name} 👋</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="icon-btn" id="btnGoal" title="ตั้งเป้าหมาย">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/></svg>
+          </div>
+          <div class="icon-btn" id="btnLogout" title="ออกจากระบบ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-nav">
+        <button class="tab-btn ${appState.currentView==='dashboard'?'active':''}" id="tabDash">📊 ภาพรวม</button>
+        <button class="tab-btn ${appState.currentView==='history'?'active':''}" id="tabHistory">📋 ประวัติ</button>
+      </div>
+
+      ${appState.currentView === 'dashboard' ? renderDashboardContent(stats, pct, offset) : renderHistoryContent()}
+    </div>
+  `;
+
+  document.getElementById('btnLogout').addEventListener('click', handleLogout);
+  document.getElementById('btnGoal').addEventListener('click', showGoalModal);
+  document.getElementById('tabDash').addEventListener('click', function() { appState.currentView='dashboard'; renderDashboard(); });
+  document.getElementById('tabHistory').addEventListener('click', function() { appState.currentView='history'; renderDashboard(); });
+
+  if (appState.currentView === 'dashboard') {
+    document.getElementById('btnToggle').addEventListener('click', function() {
+      appState.isWalking ? stopWalking() : startWalking();
+    });
+    document.getElementById('btnSave').addEventListener('click', handleSave);
+    document.getElementById('btnForceSim').addEventListener('click', function() {
+      if (confirm('เปิดโหมดจำลอง?\n(ใช้เมื่อเซ็นเซอร์ไม่ทำงาน)')) {
+        stopWalking(); appState.isWalking = true;
+        updateStatusUI(true); startSimulation();
+      }
+    });
+    updateSessionUI();
+  }
+}
+
+function renderDashboardContent(stats, pct, offset) {
+  return `
+    <div class="stats-strip">
+      <div class="stat-card" style="animation-delay:0.05s">
+        <div class="stat-val" id="totalSteps">${Number(stats.steps).toLocaleString()}</div>
+        <div class="stat-label">ก้าวสะสม</div>
+      </div>
+      <div class="stat-card" style="animation-delay:0.1s">
+        <div class="stat-val">${parseInt(stats.calories).toLocaleString()}</div>
+        <div class="stat-label">Kcal รวม</div>
+      </div>
+      <div class="stat-card" style="animation-delay:0.15s">
+        <div class="stat-val">${parseFloat(stats.distance).toFixed(1)}</div>
+        <div class="stat-label">km รวม</div>
+      </div>
+    </div>
+
+    <div class="ring-wrap">
+      <div class="ring-container">
+        <svg class="ring-svg" viewBox="0 0 220 220" width="240" height="240">
+          <circle class="ring-bg" cx="110" cy="110" r="100"/>
+          <circle class="ring-progress" id="ringProgress" cx="110" cy="110" r="100"
+            style="stroke-dashoffset:${offset}"/>
+        </svg>
+        <div class="ring-inner">
+          <div class="ring-steps" id="currentSteps">0</div>
+          <div class="ring-unit">ก้าว / เซสชัน</div>
+          <div class="ring-status" id="statusText">พร้อมเริ่ม</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="goal-wrap">
+      <div class="goal-card">
+        <div class="goal-header">
+          <span class="goal-title">🎯 เป้าหมายวันนี้</span>
+          <span class="goal-pct" id="goalPct">${pct}%</span>
+        </div>
+        <div class="goal-bar-bg">
+          <div class="goal-bar-fill" id="goalBar" style="width:${pct}%"></div>
+        </div>
+        <div class="goal-sub">
+          <span id="goalCurrent">0 ก้าว</span>
+          <span>${appState.dailyGoal.toLocaleString()} ก้าว</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-icon" style="background:rgba(255,120,50,0.15);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ff7832" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 01-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
+        </div>
+        <div>
+          <div class="metric-val" id="currentCalories">0.0</div>
+          <div class="metric-label">Kcal</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon" style="background:rgba(77,159,255,0.15);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4d9fff" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div>
+          <div class="metric-val" id="currentDistance">0.00</div>
+          <div class="metric-label">Km</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="debug-strip">
+      <div class="debug-card">
+        <div class="debug-dot" id="debugDot"></div>
+        <span id="debugStatus" style="flex:1">รอคำสั่ง</span>
+        <span id="debugMode" style="color:var(--text-muted)">-</span>
+      </div>
+    </div>
+
+    <div class="controls-wrap">
+      <button class="btn-start" id="btnToggle">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        เริ่มเดิน / Start
+      </button>
+      <button class="btn-sim" id="btnForceSim">เซ็นเซอร์ไม่ทำงาน? → ใช้โหมดจำลอง</button>
+      <button class="btn-save" id="btnSave" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+        บันทึกข้อมูล
+      </button>
+    </div>
+  `;
+}
+
+function renderHistoryContent() {
+  var h = appState.history;
+  if (!h || h.length === 0) {
+    return `<div class="history-wrap"><div class="history-empty"><div class="empty-icon">🏃</div><div>ยังไม่มีประวัติการวิ่ง<br><span style="font-size:12px;color:var(--text-muted)">เริ่มวิ่งและบันทึกก้าวแรกของคุณ!</span></div></div></div>`;
+  }
+  var rows = h.slice().reverse().map(function(item, i) {
+    var d = new Date(item[1]);
+    var day = isNaN(d.getDate()) ? item[1].split('-')[2] : d.getDate();
+    var mon = isNaN(d.getMonth()) ? '' : d.toLocaleString('th', {month:'short'});
+    var steps = Number(item[3]).toLocaleString();
+    var cal = parseFloat(item[4]).toFixed(1);
+    var dist = parseFloat(item[5]).toFixed(2);
+    var hit = Number(item[3]) >= appState.dailyGoal;
+    return `
+      <div class="history-item" style="animation-delay:${i*0.04}s">
+        <div class="history-date-box">
+          <div class="history-day">${day}</div>
+          <div class="history-mon">${mon}</div>
+        </div>
+        <div>
+          <div class="history-info-steps">${steps} ก้าว</div>
+          <div class="history-info-sub">${cal} kcal · ${dist} km · ${item[2]}</div>
+        </div>
+        <div class="history-badge ${hit?'':'miss'}">${hit?'✅ Goal':'❌ Miss'}</div>
+      </div>`;
+  }).join('');
+  return `<div class="history-wrap">${rows}</div>`;
+}
+
+/* ============================================================
+   POPUP: WELCOME
+   ============================================================ */
+function showPopup() {
+  var u = appState.user, stats = appState.stats;
+  var initials = (u.name || '?')[0].toUpperCase();
+  var div = document.createElement('div');
+  div.innerHTML = `
+    <div class="popup-overlay" id="popupOverlay">
+      <div class="popup-card">
+        <div class="popup-avatar">${initials}</div>
+        <div class="popup-name">${u.name} ${u.surname}</div>
+        <div class="popup-pos">${u.position} · ${u.department}</div>
+        <div class="popup-info-row"><span class="popup-info-label">รหัสพนักงาน</span><span class="popup-info-val">${u.id}</span></div>
+        <div class="popup-info-row"><span class="popup-info-label">ตำแหน่ง</span><span class="popup-info-val">${u.position}</span></div>
+        <div class="popup-info-row"><span class="popup-info-label">แผนก</span><span class="popup-info-val">${u.department}</span></div>
+        <div class="popup-steps-banner">
+          <div class="popup-steps-num">${Number(stats.steps).toLocaleString()}</div>
+          <div class="popup-steps-label">ก้าวสะสมทั้งหมด</div>
+        </div>
+        <button class="popup-close-btn" id="btnClosePopup">🚀 เริ่มใช้งาน</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById('btnClosePopup').addEventListener('click', function() { document.body.removeChild(div); });
+}
+
+/* ============================================================
+   GOAL MODAL
+   ============================================================ */
+function showGoalModal() {
+  var goals = [5000, 8000, 10000, 12000];
+  var div = document.createElement('div');
+  div.innerHTML = `
+    <div class="modal-overlay" id="goalOverlay">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">🎯 ตั้งเป้าหมายก้าวต่อวัน</div>
+        <div class="goal-options">
+          ${goals.map(function(g) {
+            return `<div class="goal-option ${appState.dailyGoal===g?'selected':''}" data-val="${g}">
+              <div class="goal-option-val">${(g/1000).toFixed(0)}K</div>
+              <div class="goal-option-label">${g.toLocaleString()} ก้าว</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <button class="modal-close" id="btnSaveGoal">บันทึกเป้าหมาย</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  var selected = appState.dailyGoal;
+  div.querySelectorAll('.goal-option').forEach(function(el) {
+    el.addEventListener('click', function() {
+      div.querySelectorAll('.goal-option').forEach(function(x) { x.classList.remove('selected'); });
+      el.classList.add('selected');
+      selected = parseInt(el.dataset.val);
+    });
+  });
+  document.getElementById('btnSaveGoal').addEventListener('click', function() {
+    appState.dailyGoal = selected;
+    localStorage.setItem('daily_goal', selected);
+    document.body.removeChild(div);
+    updateSessionUI();
+  });
+  div.querySelector('.modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) document.body.removeChild(div);
+  });
+}
+
+/* ============================================================
+   LOGIN / LOGOUT
+   ============================================================ */
+function handleLogin(id) {
+  var btn = document.getElementById('btnLogin');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  document.getElementById('loginErr').innerText = '';
+
+  callGAS('login', { userId: id },
+    function(response) {
+      appState.user = response.user;
+      appState.stats = response.stats;
+      appState.history = response.history || [];
+      renderDashboard();
+      showPopup();
+    },
+    function(err) {
+      document.getElementById('loginErr').innerText = err.message || 'เกิดข้อผิดพลาด';
+      btn.innerHTML = 'เข้าสู่ระบบ';
+      btn.disabled = false;
+    }
+  );
+}
+
+function handleLogout() {
+  stopWalking();
+  appState.user = null;
+  appState.sessionSteps = 0;
+  appState.currentView = 'dashboard';
+  renderLogin();
+}
+
+/* ============================================================
+   STEP DETECTION — Low-Pass Filter + Peak Detection + Dynamic Threshold
+   ============================================================ */
+
+/**
+ * Low-Pass Filter (Exponential Moving Average)
+ * Yn = α·Xn + (1−α)·Yn−1
+ * กรองสัญญาณรบกวนความถี่สูง (มือสั่น, กระเทือก)
+ */
+function applyLowPassFilter(newValue) {
+  var alpha = appState.lpfAlpha;
+  appState.lpfValue = alpha * newValue + (1 - alpha) * appState.lpfValue;
+  return appState.lpfValue;
+}
+
+/**
+ * Dynamic Threshold
+ * คำนวณ mean ของ magnitude ใน window ล่าสุด แล้วคูณด้วย multiplier
+ * ทำให้ threshold ปรับตามความแรงของการเดินแต่ละคน
+ */
+function getDynamicThreshold() {
+  var buf = appState.recentMagnitudes;
+  if (buf.length < 5) return 9.8 * appState.thresholdMultiplier; // fallback ใกล้ gravity
+  var sum = 0;
+  for (var i = 0; i < buf.length; i++) sum += buf[i];
+  var mean = sum / buf.length;
+  return mean * appState.thresholdMultiplier;
+}
+
+/**
+ * Peak Detection
+ * ตรวจจับจุดสูงสุดของ filtered signal:
+ *   - delta กำลังเปลี่ยนจาก + → − (กำลังลงจาก peak)
+ *   - filtered value ต้องสูงกว่า dynamic threshold
+ *   - cooldown ป้องกันนับซ้ำถี่เกินไป
+ */
+function processAcceleration(rawMagnitude) {
+  // 1. เพิ่ม buffer สำหรับ dynamic threshold
+  appState.recentMagnitudes.push(rawMagnitude);
+  if (appState.recentMagnitudes.length > appState.thresholdWindow) {
+    appState.recentMagnitudes.shift();
+  }
+
+  // 2. Low-Pass Filter
+  var filtered = applyLowPassFilter(rawMagnitude);
+
+  // 3. คำนวณ delta (ความชัน)
+  var delta = filtered - appState.prevFiltered;
+  appState.prevFiltered = filtered;
+
+  // 4. Peak Detection: delta เปลี่ยนจาก + → − (ถึงจุดยอด)
+  var isPeak = (appState.prevDelta > 0 && delta <= 0);
+  appState.prevDelta = delta;
+
+  if (!isPeak) return;
+
+  // 5. Dynamic Threshold check
+  var threshold = getDynamicThreshold();
+  if (filtered < threshold) return;
+
+  // 6. Cooldown check
+  var now = Date.now();
+  if (now - appState.lastStepTime < appState.stepCooldown) return;
+
+  appState.lastStepTime = now;
+  addSteps(1);
+}
+
+/* ============================================================
+   SENSOR MANAGEMENT
+   ============================================================ */
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function isInIframe() { try { return window.self !== window.top; } catch(e) { return true; } }
+
+function startWalking() {
+  appState.isWalking = true;
+  appState.isSensorWorking = false;
+  // Reset filter state
+  appState.lpfValue = 0;
+  appState.prevFiltered = 0;
+  appState.prevDelta = 0;
+  appState.recentMagnitudes = [];
+
+  updateStatusUI(true);
+  setDebug('กำลังเริ่ม...', 'Checking', false);
+
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS 13+ ต้องขอ permission ก่อน
+    DeviceMotionEvent.requestPermission()
+      .then(function(state) {
+        if (state === 'granted') { attachSensors('iOS Safari'); }
+        else { setDebug('Permission Denied', 'iOS', true); promptSimMode('ไม่ได้รับอนุญาตใช้เซ็นเซอร์'); }
+      })
+      .catch(function() { attachSensors('iOS Fallback'); });
+  } else {
+    attachSensors('Android/Web');
+  }
+}
+
+function attachSensors(modeLabel) {
+  setDebug('รอสัญญาณ...', modeLabel, false);
+  updateStatusText('กำลังเชื่อมต่อเซ็นเซอร์...');
+
+  window.addEventListener('devicemotion', handleMotion);
+
+  // ถ้า 3 วินาทีไม่มีสัญญาณ → แนะนำ sim mode
+  if (appState.sensorCheckTimeout) clearTimeout(appState.sensorCheckTimeout);
+  appState.sensorCheckTimeout = setTimeout(function() {
+    if (!appState.isSensorWorking && appState.isWalking) {
+      setDebug('ไม่มีสัญญาณ', 'Blocked/Unsupported', true);
+      updateStatusText('ไม่พบสัญญาณเซ็นเซอร์');
+      var b = document.getElementById('btnForceSim');
+      if (b) b.classList.add('urgent');
+      promptSimMode('ไม่ได้รับสัญญาณเซ็นเซอร์\nอาจเกิดจาก:\n- เบราว์เซอร์บล็อก\n- อุปกรณ์ไม่รองรับ');
+    }
+  }, 3000);
+}
+
+function stopWalking() {
+  appState.isWalking = false;
+  appState.isSensorWorking = false;
+  window.removeEventListener('devicemotion', handleMotion);
+  if (appState.intervalId) { clearInterval(appState.intervalId); appState.intervalId = null; }
+  if (appState.sensorCheckTimeout) { clearTimeout(appState.sensorCheckTimeout); appState.sensorCheckTimeout = null; }
+  setDebug('หยุด', '-', false);
+  updateStatusUI(false);
+}
+
+function promptSimMode(reason) {
+  if (confirm(reason + '\n\nต้องการใช้โหมดจำลองหรือไม่?')) {
+    stopWalking();
+    appState.isWalking = true;
+    updateStatusUI(true);
+    startSimulation();
+  } else {
+    stopWalking();
+  }
+}
+
+function startSimulation() {
+  setDebug('Sim', 'โหมดจำลอง', false);
+  updateStatusText('🎮 โหมดจำลอง');
+  if (appState.sensorCheckTimeout) clearTimeout(appState.sensorCheckTimeout);
+  appState.intervalId = setInterval(function() {
+    if (!appState.isWalking) return;
+    addSteps(Math.floor(Math.random() * 2) + 1);
+  }, 800);
+}
+
+/* ============================================================
+   MOTION EVENT HANDLER
+   ============================================================ */
+function handleMotion(event) {
+  if (!appState.isWalking) return;
+
+  var acc = event.accelerationIncludingGravity;
+  if (!acc || acc.x === null || acc.x === undefined) {
+    acc = event.acceleration;
+  }
+  if (!acc || acc.x === null || acc.x === undefined) return;
+
+  // ยืนยันเซ็นเซอร์ทำงาน
+  if (!appState.isSensorWorking) {
+    appState.isSensorWorking = true;
+    setDebug('ทำงาน', 'Motion Sensor (LPF+Peak)', false);
+    if (appState.sensorCheckTimeout) clearTimeout(appState.sensorCheckTimeout);
+  }
+
+  var x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+  var magnitude = Math.sqrt(x*x + y*y + z*z);
+
+  // ส่งเข้า processing pipeline
+  processAcceleration(magnitude);
+}
+
+/* ============================================================
+   STEP COUNTER
+   ============================================================ */
+function addSteps(n) {
+  appState.sessionSteps += n;
+  updateSessionUI();
+  var stepsEl = document.getElementById('currentSteps');
+  if (stepsEl) {
+    stepsEl.classList.remove('step-flash');
+    void stepsEl.offsetWidth;
+    stepsEl.classList.add('step-flash');
+  }
+}
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function updateStatusUI(isWalking) {
+  var btn = document.getElementById('btnToggle');
+  var btnSave = document.getElementById('btnSave');
+  var btnSim = document.getElementById('btnForceSim');
+  var ring = document.getElementById('ringProgress');
+  if (!btn) return;
+
+  if (isWalking) {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> หยุดชั่วคราว`;
+    btn.classList.add('paused');
+    if (ring) ring.classList.add('walking');
+    if (btnSave) { btnSave.disabled = true; btnSave.classList.remove('ready'); }
+    if (btnSim) btnSim.style.display = 'none';
+    updateStatusText('กำลังนับก้าว...');
+  } else {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><polygon points="5,3 19,12 5,21"/></svg> เริ่มเดิน / Start`;
+    btn.classList.remove('paused');
+    if (ring) ring.classList.remove('walking');
+    if (btnSim) { btnSim.style.display = 'block'; btnSim.classList.remove('urgent'); }
+    if (appState.sessionSteps > 0 && btnSave) { btnSave.disabled = false; btnSave.classList.add('ready'); }
+    updateStatusText('หยุดชั่วคราว');
+  }
+}
+
+function updateSessionUI() {
+  var s = appState.sessionSteps;
+  var cal = (s * 0.04).toFixed(1);
+  var dist = (s * 0.0007).toFixed(2);
+  var pct = Math.min(100, Math.round((s / appState.dailyGoal) * 100));
+  var circumference = 628;
+  var offset = circumference - (circumference * pct / 100);
+
+  var el = function(id) { return document.getElementById(id); };
+  if (el('currentSteps'))    el('currentSteps').innerText = s.toLocaleString();
+  if (el('currentCalories')) el('currentCalories').innerText = cal;
+  if (el('currentDistance')) el('currentDistance').innerText = dist;
+  if (el('ringProgress'))    el('ringProgress').style.strokeDashoffset = offset;
+  if (el('goalBar'))         el('goalBar').style.width = pct + '%';
+  if (el('goalPct'))         el('goalPct').innerText = pct + '%';
+  if (el('goalCurrent'))     el('goalCurrent').innerText = s.toLocaleString() + ' ก้าว';
+}
+
+function updateStatusText(text) {
+  var el = document.getElementById('statusText');
+  if (el) el.innerHTML = text;
+}
+
+function setDebug(status, mode, isError) {
+  var dot = document.getElementById('debugDot');
+  var elStatus = document.getElementById('debugStatus');
+  var elMode = document.getElementById('debugMode');
+  if (dot) {
+    dot.className = 'debug-dot';
+    if (appState.isWalking && !isError) dot.classList.add('active');
+    if (isError) dot.classList.add('error');
+  }
+  if (elStatus) elStatus.innerText = status;
+  if (elMode) elMode.innerText = mode;
+}
+
+/* ============================================================
+   SAVE DATA
+   ============================================================ */
+function handleSave() {
+  if (appState.sessionSteps === 0) return;
+  if (!confirm('ต้องการบันทึก ' + appState.sessionSteps + ' ก้าว ใช่หรือไม่?')) return;
+
+  var btn = document.getElementById('btnSave');
+  if (btn) { btn.innerHTML = '<span class="spinner"></span> กำลังบันทึก...'; btn.disabled = true; }
+
+  var payload = {
+    id: appState.user.id,
+    steps: appState.sessionSteps,
+    calories: (appState.sessionSteps * 0.04).toFixed(1),
+    distance: (appState.sessionSteps * 0.0007).toFixed(2)
+  };
+
+  callGAS('save', { data: payload },
+    function(resp) {
+      appState.stats = resp.stats;
+      appState.history = resp.history || appState.history;
+      appState.sessionSteps = 0;
+      updateSessionUI();
+      var totalEl = document.getElementById('totalSteps');
+      if (totalEl) totalEl.innerText = Number(appState.stats.steps).toLocaleString();
+      if (btn) {
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg> บันทึกข้อมูล`;
+        btn.disabled = true; btn.classList.remove('ready');
+      }
+      alert('✅ บันทึกข้อมูลสำเร็จ!');
+    },
+    function(err) {
+      alert('❌ บันทึกไม่สำเร็จ: ' + (err.message || err));
+      if (btn) { btn.innerHTML = 'บันทึกข้อมูล'; btn.disabled = false; btn.classList.add('ready'); }
+    }
+  );
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  if (!CONFIG.GAS_URL) {
+    renderConfigBanner();
+  } else {
+    renderLogin();
+  }
+});
+</script>
+</body>
+</html>
