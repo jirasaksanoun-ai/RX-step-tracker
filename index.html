@@ -857,16 +857,33 @@ var S = {
   dailyGoal: parseInt(localStorage.getItem('rx_goal') || '10000'),
   view: 'dashboard', // 'dashboard' | 'history'
 
-  // Signal processing state
+  // ---- Layer 1: Low-Pass Filter ----
   lpf: 0,
-  lpfAlpha: 0.12,
+  lpfAlpha: 0.12,        // ค่าต่ำ = กรอง noise ดีขึ้น แต่ตอบสนองช้าลง
+
+  // ---- Layer 2: Peak Detection ----
   prevFiltered: 0,
   prevDelta: 0,
-  lastStepTime: 0,
-  stepCooldown: 320,
+
+  // ---- Layer 3: Dynamic Threshold ----
   magnitudes: [],
   magWindow: 50,
-  threshMult: 1.08
+  threshMult: 1.15,      // เพิ่มจาก 1.08 → ต้องแรงกว่าค่าเฉลี่ย 15%
+
+  // ---- Layer 4: Cadence Validator ----
+  // การเดิน/วิ่งจริง = 80–160 ก้าว/นาที (0.375s–0.75s ต่อก้าว)
+  // การแกว่งมือถือมักเร็วกว่า 160 หรือช้ากว่า 60 ก้าว/นาที
+  lastStepTime: 0,
+  stepCooldown: 380,     // ขั้นต่ำ 380ms (~158 ก้าว/นาที) ป้องกันแกว่งเร็ว
+  maxStepInterval: 1800, // สูงสุด 1800ms (~33 ก้าว/นาที) ถ้าช้ากว่านี้ = ไม่ใช่เดิน
+
+  // ---- Layer 5: Variance Guard ----
+  // การแกว่งมือถือ → magnitude กระโดดสูงมากและไม่สม่ำเสมอ
+  // การเดินจริง → magnitude ใกล้เคียง gravity (7–13 m/s²) และสม่ำเสมอ
+  recentPeaks: [],       // เก็บค่า peak ล่าสุด 6 ครั้ง
+  peakWindow: 6,
+  maxPeakVariance: 8.0,  // ถ้า variance ของ peaks > 8 → ไม่สม่ำเสมอ = แกว่ง
+  maxAllowedMag: 22.0    // magnitude > 22 m/s² = แกว่งแรงเกินไป ไม่ใช่เดิน
 };
 
 /* ============================================================
@@ -900,32 +917,84 @@ function callGAS(action, payload, onOk, onErr) {
 }
 
 /* ============================================================
-   SIGNAL PROCESSING
+   SIGNAL PROCESSING — 5-Layer Anti-Swing Pipeline
+   ============================================================
+
+   Layer 1: Low-Pass Filter      → กรอง noise / การสั่นสะเทือนเล็กน้อย
+   Layer 2: Peak Detection        → นับเฉพาะจุดยอดคลื่น (ส้นเท้ากระแทกพื้น)
+   Layer 3: Dynamic Threshold     → ปรับ threshold ตามแรงเดินของแต่ละคน
+   Layer 4: Cadence Validator     → ตรวจจังหวะก้าว 80–158 ก้าว/นาที เท่านั้น
+   Layer 5: Variance Guard        → ตรวจความสม่ำเสมอ ป้องกันการแกว่งสุ่ม
+
    ============================================================ */
+
+/* --- Layer 1: Exponential Low-Pass Filter ---
+   Yn = α·Xn + (1−α)·Yn−1  (α = 0.12 → กรอง noise ดี)         */
 function lpfFilter(raw) {
   S.lpf = S.lpfAlpha * raw + (1 - S.lpfAlpha) * S.lpf;
   return S.lpf;
 }
+
+/* --- Layer 3: Dynamic Threshold ---
+   mean ของ magnitude ล่าสุด × 1.15 → ต้องแรงกว่าค่าเฉลี่ย 15% */
 function dynThreshold() {
   if (S.magnitudes.length < 5) return 9.8 * S.threshMult;
-  var sum = S.magnitudes.reduce(function(a,b){ return a+b; }, 0);
+  var sum = S.magnitudes.reduce(function(a, b) { return a + b; }, 0);
   return (sum / S.magnitudes.length) * S.threshMult;
 }
+
+/* --- Layer 5: Variance ของ peaks ---
+   การเดินจริง: peaks สม่ำเสมอ → variance ต่ำ
+   การแกว่ง:   peaks กระโดดไม่สม่ำเสมอ → variance สูง           */
+function peakVariance() {
+  var p = S.recentPeaks;
+  if (p.length < 3) return 0; // ยังไม่มีข้อมูลพอ → ผ่าน
+  var mean = p.reduce(function(a, b) { return a + b; }, 0) / p.length;
+  var variance = p.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / p.length;
+  return variance;
+}
+
+/* --- Main Pipeline ---                                          */
 function processAcc(rawMag) {
+
+  // [L5-pre] ตรวจ magnitude สูงผิดปกติ → แกว่งแรง → ทิ้งทันที
+  if (rawMag > S.maxAllowedMag) return;
+
+  // [L3] เก็บ buffer สำหรับ dynamic threshold
   S.magnitudes.push(rawMag);
   if (S.magnitudes.length > S.magWindow) S.magnitudes.shift();
 
+  // [L1] Low-Pass Filter
   var filtered = lpfFilter(rawMag);
   var delta = filtered - S.prevFiltered;
   S.prevFiltered = filtered;
 
+  // [L2] Peak Detection: delta เปลี่ยนจาก + → − (ถึงจุดยอดแล้วเริ่มลง)
   var isPeak = S.prevDelta > 0 && delta <= 0;
   S.prevDelta = delta;
   if (!isPeak) return;
+
+  // [L3] Dynamic Threshold check
   if (filtered < dynThreshold()) return;
 
   var now = Date.now();
-  if (now - S.lastStepTime < S.stepCooldown) return;
+  var interval = now - S.lastStepTime;
+
+  // [L4] Cadence Validator
+  // ป้องกันเร็วเกิน (< stepCooldown ms = > 158 ก้าว/นาที)
+  if (S.lastStepTime > 0 && interval < S.stepCooldown) return;
+
+  // [L5] Variance Guard — ตรวจเฉพาะเมื่อมีข้อมูลพอ (≥ 3 peaks)
+  S.recentPeaks.push(filtered);
+  if (S.recentPeaks.length > S.peakWindow) S.recentPeaks.shift();
+
+  if (S.recentPeaks.length >= 3) {
+    var v = peakVariance();
+    // ถ้า variance สูงเกินไป = peaks ไม่สม่ำเสมอ = แกว่ง → ทิ้ง
+    if (v > S.maxPeakVariance) return;
+  }
+
+  // ✅ ผ่านทุก layer → นับก้าว
   S.lastStepTime = now;
   addStep(1);
 }
@@ -935,7 +1004,8 @@ function processAcc(rawMag) {
    ============================================================ */
 function startWalking() {
   S.isWalking = true; S.sensorOk = false; S.isSim = false;
-  S.lpf = 0; S.prevFiltered = 0; S.prevDelta = 0; S.magnitudes = [];
+  S.lpf = 0; S.prevFiltered = 0; S.prevDelta = 0;
+  S.magnitudes = []; S.recentPeaks = []; S.lastStepTime = 0;
   updateControls();
   setSensor('กำลังเชื่อมต่อ...', 'checking');
 
