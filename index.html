@@ -4,997 +4,405 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RX Step Tracker</title>
-
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <style>
-    /* =====================================================
-       DESIGN TOKENS
-    ===================================================== */
     :root {
-      --bg:          #080810;
-      --bg-card:     #0e0e1a;
-      --bg-raised:   #14141f;
-      --bg-hover:    #1a1a2e;
-      --border:      rgba(255,255,255,0.06);
-      --border-glow: rgba(99,211,255,0.25);
+      --bg:#080810; --bg-card:#0e0e1a; --bg-raised:#14141f; --bg-hover:#1a1a2e;
+      --border:rgba(255,255,255,0.06); --border-glow:rgba(99,211,255,0.25);
+      --neon:#63d3ff; --neon-dim:rgba(99,211,255,0.10); --neon-glow:rgba(99,211,255,0.40); --neon-mid:#38bdf8;
+      --lime:#a3e635; --lime-dim:rgba(163,230,53,0.10); --lime-glow:rgba(163,230,53,0.35);
+      --orange:#fb923c; --orange-dim:rgba(251,146,60,0.12);
+      --gold:#fbbf24; --gold-dim:rgba(251,191,36,0.10); --gold-glow:rgba(251,191,36,0.30);
+      --danger:#f87171; --success:#4ade80;
+      --text-1:#f1f5f9; --text-2:#94a3b8; --text-3:#475569; --text-4:#1e293b;
+      --r-sm:12px; --r-md:18px; --r-lg:24px; --r-xl:32px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Barlow','Sarabun',sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;overflow-x:hidden;-webkit-tap-highlight-color:transparent;}
+    button{cursor:pointer;font-family:inherit;} input,textarea{font-family:inherit;}
 
-      --neon:        #63d3ff;
-      --neon-dim:    rgba(99,211,255,0.10);
-      --neon-glow:   rgba(99,211,255,0.40);
-      --neon-mid:    #38bdf8;
+    .scene{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+    .scene::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% -10%,rgba(99,211,255,0.07) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at -10% 80%,rgba(163,230,53,0.05) 0%,transparent 60%);}
+    .scene-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(99,211,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(99,211,255,0.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 80%);}
+    .orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:orbFloat 12s ease-in-out infinite;}
+    .orb-1{width:400px;height:400px;background:radial-gradient(circle,rgba(99,211,255,0.12),transparent 70%);top:-100px;right:-100px;animation-duration:14s;}
+    .orb-2{width:300px;height:300px;background:radial-gradient(circle,rgba(163,230,53,0.08),transparent 70%);bottom:-50px;left:-80px;animation-duration:18s;animation-delay:-6s;}
+    @keyframes orbFloat{0%,100%{transform:translate(0,0)}33%{transform:translate(30px,-20px)}66%{transform:translate(-20px,15px)}}
 
-      --lime:        #a3e635;
-      --lime-dim:    rgba(163,230,53,0.10);
-      --lime-glow:   rgba(163,230,53,0.35);
+    /* LOADING */
+    .loading-screen{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;transition:opacity .5s,visibility .5s;}
+    .loading-screen.hide{opacity:0;visibility:hidden;}
+    .loading-icon{width:72px;height:72px;background:linear-gradient(135deg,var(--neon),var(--lime));border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 0 40px var(--neon-glow);animation:iconPop .6s cubic-bezier(.22,.68,0,1.4) both;}
+    .loading-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;letter-spacing:4px;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .dna-loader{display:flex;align-items:center;gap:5px;height:40px;}
+    .dna-bar{width:4px;border-radius:99px;background:linear-gradient(to top,var(--neon),var(--lime));animation:dnaWave 1.2s ease-in-out infinite;box-shadow:0 0 8px var(--neon-glow);}
+    .dna-bar:nth-child(1){animation-delay:0s}.dna-bar:nth-child(2){animation-delay:.1s}.dna-bar:nth-child(3){animation-delay:.2s}.dna-bar:nth-child(4){animation-delay:.3s}.dna-bar:nth-child(5){animation-delay:.4s}.dna-bar:nth-child(6){animation-delay:.5s}.dna-bar:nth-child(7){animation-delay:.4s}.dna-bar:nth-child(8){animation-delay:.3s}.dna-bar:nth-child(9){animation-delay:.2s}.dna-bar:nth-child(10){animation-delay:.1s}
+    @keyframes dnaWave{0%,100%{height:8px;opacity:.4}50%{height:36px;opacity:1}}
+    .loading-tip{font-size:12px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;animation:fadePulse 2s ease-in-out infinite;}
+    @keyframes fadePulse{0%,100%{opacity:.4}50%{opacity:1}}
 
-      --orange:      #fb923c;
-      --orange-dim:  rgba(251,146,60,0.12);
+    /* SHELL */
+    .shell{position:relative;z-index:1;min-height:100vh;max-width:430px;margin:0 auto;display:flex;flex-direction:column;padding-bottom:60px;}
 
-      --danger:      #f87171;
-      --success:     #4ade80;
+    /* LOGIN */
+    .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;width:100%;}
+    .login-card{width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-xl);padding:40px 28px;animation:slideUp .6s cubic-bezier(.22,.68,0,1.2) both;position:relative;overflow:hidden;}
+    .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon),var(--lime),transparent);animation:shimmer 3s linear infinite;}
+    @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+    .login-badge{display:inline-flex;align-items:center;gap:6px;background:var(--neon-dim);border:1px solid rgba(99,211,255,.2);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:600;color:var(--neon);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;}
+    .login-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--neon);box-shadow:0 0 6px var(--neon);animation:blink 1.5s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .login-heading{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;line-height:.95;letter-spacing:1px;margin-bottom:4px;}
+    .login-heading span{display:block;background:linear-gradient(135deg,var(--neon) 0%,var(--lime) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .login-company{font-size:13px;color:var(--gold);font-weight:600;letter-spacing:.5px;margin-bottom:4px;}
+    .login-sub{font-size:13px;color:var(--text-2);margin-bottom:28px;line-height:1.6;}
+    .login-goal-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(163,230,53,.1);border:1px solid rgba(163,230,53,.25);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--lime);margin-bottom:28px;}
+    .input-group{position:relative;margin-bottom:12px;}
+    .input-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none;}
+    .input-field{width:100%;background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-md);padding:16px 20px 16px 46px;font-size:16px;font-weight:600;color:var(--text-1);letter-spacing:4px;outline:none;transition:border-color .25s,box-shadow .25s;}
+    .input-field::placeholder{letter-spacing:0;font-size:13px;color:var(--text-3);font-weight:400;}
+    .input-field:focus{border-color:var(--neon);box-shadow:0 0 0 4px rgba(99,211,255,.10);}
+    .btn-login{width:100%;padding:18px;background:linear-gradient(135deg,var(--neon),var(--neon-mid));color:#080810;border:none;border-radius:var(--r-md);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;transition:transform .15s,box-shadow .25s,opacity .2s;}
+    .btn-login:hover{box-shadow:0 0 40px var(--neon-glow);}
+    .btn-login:active{transform:scale(.97);}
+    .btn-login:disabled{opacity:.5;cursor:not-allowed;}
+    .login-divider{display:flex;align-items:center;gap:10px;margin:20px 0 14px;color:var(--text-3);font-size:11px;letter-spacing:1px;text-transform:uppercase;}
+    .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .login-features{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .login-feature{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:8px;}
+    .feat-icon{font-size:16px;}
 
-      --text-1: #f1f5f9;
-      --text-2: #94a3b8;
-      --text-3: #475569;
-      --text-4: #1e293b;
+    /* HEADER */
+    .header{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;}
+    .brand-label{font-size:10px;color:var(--text-3);letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+    .brand-name{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;letter-spacing:2px;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
+    .header-actions{display:flex;gap:8px;}
+    .hdr-btn{width:40px;height:40px;border-radius:var(--r-sm);background:var(--bg-raised);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:all .2s;}
+    .hdr-btn:hover{background:var(--bg-hover);color:var(--text-1);}
+    .hdr-btn svg{width:17px;height:17px;}
 
-      --r-sm: 12px;
-      --r-md: 18px;
-      --r-lg: 24px;
-      --r-xl: 32px;
-    }
+    /* COMPANY GOAL BANNER */
+    .company-banner{margin:14px 16px 0;background:linear-gradient(135deg,rgba(99,211,255,0.05),rgba(163,230,53,0.04));border:1px solid rgba(99,211,255,0.15);border-radius:var(--r-md);padding:14px 16px;position:relative;overflow:hidden;}
+    .company-banner::before{content:'🏢';position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:40px;opacity:.08;}
+    .cb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .cb-title{font-size:10px;color:var(--text-2);font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
+    .cb-pct{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .cb-track{height:8px;background:var(--bg-raised);border-radius:99px;overflow:hidden;}
+    .cb-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--neon),var(--lime));box-shadow:0 0 10px var(--neon-glow);transition:width 1.2s cubic-bezier(.22,.68,0,1.2);min-width:2px;}
+    .cb-feet{display:flex;justify-content:space-between;margin-top:6px;}
+    .cb-cur{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--neon);}
+    .cb-goal{font-size:10px;color:var(--text-3);}
 
-    /* =====================================================
-       RESET & BASE
-    ===================================================== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'Barlow', 'Sarabun', sans-serif;
-      background: var(--bg);
-      color: var(--text-1);
-      min-height: 100vh;
-      overflow-x: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
-    button { cursor: pointer; font-family: inherit; }
-    input  { font-family: inherit; }
+    /* USER HERO */
+    .user-hero{margin:10px 16px 0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;gap:12px;}
+    .user-avatar{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--neon),var(--lime));display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#080810;flex-shrink:0;}
+    .user-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;line-height:1.1;}
+    .user-dept{font-size:11px;color:var(--neon);font-weight:500;margin-top:2px;}
+    .user-sessions{display:flex;flex-direction:column;align-items:center;background:var(--lime-dim);border:1px solid rgba(163,230,53,.15);border-radius:10px;padding:6px 10px;margin-left:auto;flex-shrink:0;}
+    .sess-num{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--lime);line-height:1;}
+    .sess-lbl{font-size:9px;color:var(--text-3);letter-spacing:.5px;text-transform:uppercase;}
 
-    /* =====================================================
-       ANIMATED BACKGROUND
-    ===================================================== */
-    .scene {
-      position: fixed; inset: 0; z-index: 0;
-      overflow: hidden; pointer-events: none;
-    }
-    .scene::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 70% -10%, rgba(99,211,255,0.07) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at -10% 80%, rgba(163,230,53,0.05) 0%, transparent 60%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(99,211,255,0.02) 0%, transparent 70%);
-      animation: scenePulse 8s ease-in-out infinite alternate;
-    }
-    .scene-grid {
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(99,211,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(99,211,255,0.025) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
-    }
-    .orb {
-      position: absolute; border-radius: 50%;
-      filter: blur(60px); opacity: 0.5;
-      animation: orbFloat 12s ease-in-out infinite;
-    }
-    .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(99,211,255,0.12), transparent 70%); top: -100px; right: -100px; animation-duration: 14s; }
-    .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(163,230,53,0.08), transparent 70%); bottom: -50px; left: -80px; animation-duration: 18s; animation-delay: -6s; }
-    .orb-3 { width: 200px; height: 200px; background: radial-gradient(circle, rgba(251,146,60,0.06), transparent 70%); top: 40%; left: 30%; animation-duration: 10s; animation-delay: -3s; }
+    /* TABS */
+    .tab-bar{display:flex;gap:6px;margin:12px 16px 0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:5px;}
+    .tab-item{flex:1;padding:9px 4px;border-radius:11px;border:none;background:transparent;color:var(--text-3);font-family:'Barlow','Sarabun',sans-serif;font-size:11px;font-weight:600;letter-spacing:.3px;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:4px;position:relative;}
+    .tab-item.active{background:linear-gradient(135deg,rgba(99,211,255,.15),rgba(163,230,53,.10));color:var(--neon);border:1px solid rgba(99,211,255,.2);}
+    .tab-item svg{width:13px;height:13px;flex-shrink:0;}
+    .tab-badge{background:var(--gold);color:#080810;border-radius:99px;padding:1px 5px;font-size:9px;font-weight:900;line-height:1.4;}
 
-    @keyframes scenePulse {
-      from { opacity: 0.8; }
-      to   { opacity: 1; }
-    }
-    @keyframes orbFloat {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%       { transform: translate(30px, -20px) scale(1.05); }
-      66%       { transform: translate(-20px, 15px) scale(0.95); }
-    }
+    /* STATS ROW */
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 16px 0;}
+    .stat-tile{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 8px;text-align:center;animation:fadeUp .5s both;}
+    .stat-tile-icon{font-size:16px;margin-bottom:3px;}
+    .stat-tile-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1;}
+    .stat-tile-label{font-size:9px;color:var(--text-3);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
 
-    /* =====================================================
-       LAYOUT SHELL
-    ===================================================== */
-    .shell {
-      position: relative; z-index: 1;
-      min-height: 100vh;
-      max-width: 420px;
-      margin: 0 auto;
-      display: flex; flex-direction: column; align-items: stretch;
-      padding-bottom: 48px;
-    }
+    /* RING */
+    .ring-section{margin:14px 16px 0;display:flex;flex-direction:column;align-items:center;}
+    .ring-outer{position:relative;width:210px;height:210px;display:flex;align-items:center;justify-content:center;}
+    .ring-svg{position:absolute;inset:0;transform:rotate(-90deg);}
+    .ring-track{fill:none;stroke:var(--bg-raised);stroke-width:12;}
+    .ring-fill{fill:none;stroke-width:12;stroke-linecap:round;stroke-dasharray:565;stroke-dashoffset:565;transition:stroke-dashoffset .8s cubic-bezier(.22,.68,0,1.2);}
+    .ring-glow{fill:none;stroke:var(--neon);stroke-width:18;stroke-linecap:round;stroke-dasharray:565;stroke-dashoffset:565;opacity:.15;filter:blur(6px);transition:stroke-dashoffset .8s;}
+    .ring-fill.walking{animation:ringPulse 1.8s ease-in-out infinite;}
+    @keyframes ringPulse{0%,100%{filter:drop-shadow(0 0 6px var(--neon-glow))}50%{filter:drop-shadow(0 0 18px var(--neon-glow))}}
+    .ring-core{z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;}
+    .ring-steps-val{font-family:'Barlow Condensed',sans-serif;font-size:54px;font-weight:900;line-height:1;background:linear-gradient(180deg,var(--text-1) 60%,var(--text-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .ring-steps-val.pop{animation:stepPop .3s cubic-bezier(.22,.68,0,1.4);}
+    @keyframes stepPop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+    .ring-unit{font-size:10px;color:var(--text-3);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+    .ring-status{margin-top:6px;padding:4px 12px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:var(--bg-raised);color:var(--text-3);border:1px solid var(--border);transition:all .3s;}
+    .ring-status.active{background:rgba(99,211,255,.1);color:var(--neon);border-color:rgba(99,211,255,.3);animation:statusPulse 2s ease-in-out infinite;}
+    @keyframes statusPulse{0%,100%{box-shadow:0 0 12px rgba(99,211,255,.1)}50%{box-shadow:0 0 24px rgba(99,211,255,.25)}}
 
-    /* =====================================================
-       LOADING SCREEN
-    ===================================================== */
-    .loading-screen {
-      position: fixed; inset: 0; z-index: 200;
-      background: var(--bg);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 24px;
-      transition: opacity 0.5s, visibility 0.5s;
-    }
-    .loading-screen.hide { opacity: 0; visibility: hidden; }
+    /* GOAL BAR */
+    .goal-section{margin:12px 16px 0;}
+    .goal-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;}
+    .goal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .goal-label{font-size:11px;color:var(--text-2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+    .goal-pct{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .goal-track{height:7px;background:var(--bg-raised);border-radius:99px;overflow:hidden;}
+    .goal-progress{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--neon),var(--lime));box-shadow:0 0 10px var(--neon-glow);transition:width .8s cubic-bezier(.22,.68,0,1.2);min-width:0%;}
+    .goal-feet{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text-3);}
 
-    .loading-logo-wrap {
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-    }
-    .loading-icon {
-      width: 72px; height: 72px;
-      background: linear-gradient(135deg, var(--neon), var(--lime));
-      border-radius: 22px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 32px;
-      box-shadow: 0 0 40px var(--neon-glow);
-      animation: iconPop 0.6s cubic-bezier(.22,.68,0,1.4) both;
-    }
-    .loading-title {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 36px; font-weight: 900;
-      letter-spacing: 4px;
-      background: linear-gradient(135deg, var(--neon), var(--lime));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      animation: iconPop 0.6s 0.1s cubic-bezier(.22,.68,0,1.4) both;
-    }
+    /* METRICS */
+    .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 16px 0;}
+    .metric-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;display:flex;align-items:center;gap:10px;}
+    .metric-icon-wrap{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+    .metric-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1;}
+    .metric-lbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
 
-    /* DNA Helix Loader */
-    .dna-loader {
-      display: flex; align-items: center; gap: 5px;
-      height: 40px;
-    }
-    .dna-bar {
-      width: 4px; border-radius: 99px;
-      background: linear-gradient(to top, var(--neon), var(--lime));
-      animation: dnaWave 1.2s ease-in-out infinite;
-      box-shadow: 0 0 8px var(--neon-glow);
-    }
-    .dna-bar:nth-child(1)  { animation-delay: 0s;    }
-    .dna-bar:nth-child(2)  { animation-delay: 0.1s;  }
-    .dna-bar:nth-child(3)  { animation-delay: 0.2s;  }
-    .dna-bar:nth-child(4)  { animation-delay: 0.3s;  }
-    .dna-bar:nth-child(5)  { animation-delay: 0.4s;  }
-    .dna-bar:nth-child(6)  { animation-delay: 0.5s;  }
-    .dna-bar:nth-child(7)  { animation-delay: 0.4s;  }
-    .dna-bar:nth-child(8)  { animation-delay: 0.3s;  }
-    .dna-bar:nth-child(9)  { animation-delay: 0.2s;  }
-    .dna-bar:nth-child(10) { animation-delay: 0.1s;  }
+    /* SENSOR BAR */
+    .sensor-bar{margin:8px 16px 0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-3);font-family:'Courier New',monospace;}
+    .sensor-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--text-4);transition:all .3s;}
+    .sensor-dot.on{background:var(--neon);box-shadow:0 0 8px var(--neon);animation:blink 1s infinite;}
+    .sensor-dot.err{background:var(--danger);}
 
-    @keyframes dnaWave {
-      0%, 100% { height: 8px;  opacity: 0.4; }
-      50%       { height: 36px; opacity: 1;   }
-    }
-    .loading-tip {
-      font-size: 12px; color: var(--text-3);
-      letter-spacing: 1px; text-transform: uppercase;
-      animation: fadePulse 2s ease-in-out infinite;
-    }
-    @keyframes fadePulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+    /* CONTROLS */
+    .controls{margin:10px 16px 0;display:flex;flex-direction:column;gap:8px;}
+    .btn-main{width:100%;padding:18px;border-radius:var(--r-md);border:none;font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,box-shadow .25s;}
+    .btn-main:active{transform:scale(.97);}
+    .btn-start{background:linear-gradient(135deg,var(--neon),var(--neon-mid));color:#080810;box-shadow:0 4px 28px rgba(99,211,255,.2);}
+    .btn-start:hover{box-shadow:0 4px 40px rgba(99,211,255,.4);}
+    .btn-pause{background:var(--bg-raised);color:var(--gold);border:1.5px solid rgba(251,191,36,.4)!important;}
+    .btn-upload{background:linear-gradient(135deg,var(--gold),#f59e0b);color:#080810;box-shadow:0 4px 24px rgba(251,191,36,.2);}
+    .btn-save{width:100%;padding:16px;border-radius:var(--r-md);border:1.5px solid var(--border);background:transparent;color:var(--text-3);font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .25s;cursor:not-allowed;}
+    .btn-save svg{width:18px;height:18px;}
+    .btn-save.ready{border-color:rgba(163,230,53,.4);color:var(--lime);cursor:pointer;background:var(--lime-dim);}
+    .btn-save.ready:hover{box-shadow:0 0 24px rgba(163,230,53,.12);}
 
-    /* =====================================================
-       LOGIN PAGE
-    ===================================================== */
-    .login-page {
-      min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 24px; width: 100%;
-    }
-    .login-card {
-      width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-xl);
-      padding: 40px 28px;
-      animation: slideUp 0.6s cubic-bezier(.22,.68,0,1.2) both;
-      position: relative; overflow: hidden;
-    }
-    .login-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--neon), var(--lime), transparent);
-      animation: shimmer 3s linear infinite;
-    }
-    @keyframes shimmer {
-      from { transform: translateX(-100%); }
-      to   { transform: translateX(100%); }
-    }
+    /* HISTORY */
+    .history-section{margin:12px 16px 0;flex:1;}
+    .history-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+    .history-sum-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:12px;text-align:center;}
+    .hscard-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--neon);}
+    .hscard-lbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+    .history-list-title{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600;}
+    .history-empty{text-align:center;padding:50px 20px;color:var(--text-3);}
+    .hist-item{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;animation:fadeUp .4s both;}
+    .hist-date-box{background:var(--bg-raised);border-radius:10px;padding:6px 8px;text-align:center;min-width:44px;}
+    .hist-day{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;line-height:1;}
+    .hist-mon{font-size:9px;color:var(--text-3);text-transform:uppercase;}
+    .hist-steps{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;}
+    .hist-meta{font-size:11px;color:var(--text-3);margin-top:2px;}
+    .hist-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:99px;}
+    .hist-badge.hit{background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.2);}
+    .hist-badge.miss{background:rgba(248,113,113,.1);color:var(--danger);border:1px solid rgba(248,113,113,.2);}
+    .hist-badge.img{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(251,191,36,.2);}
+    .hist-badge.pending-badge{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2);}
 
-    .login-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--neon-dim);
-      border: 1px solid rgba(99,211,255,0.2);
-      border-radius: 99px; padding: 4px 12px;
-      font-size: 11px; font-weight: 600;
-      color: var(--neon); letter-spacing: 1.5px;
-      text-transform: uppercase; margin-bottom: 24px;
-    }
-    .login-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--neon); box-shadow: 0 0 6px var(--neon); animation: blink 1.5s infinite; }
+    /* PENDING TAB */
+    .pending-section{margin:12px 16px 0;}
+    .pending-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .pending-title{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+    .pending-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:10px;}
+    .pending-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);gap:10px;}
+    .pending-item:last-child{border-bottom:none;}
+    .pi-steps{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;}
+    .pi-date{font-size:11px;color:var(--text-3);margin-top:2px;}
+    .pi-note{font-size:10px;color:var(--danger);margin-top:2px;}
+    .badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:4px 9px;border-radius:99px;white-space:nowrap;}
+    .badge-pending{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(251,191,36,.3);}
+    .badge-approved{background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.25);}
+    .badge-rejected{background:rgba(248,113,113,.1);color:var(--danger);border:1px solid rgba(248,113,113,.25);}
+    .pending-empty{text-align:center;padding:40px 20px;color:var(--text-3);font-size:13px;}
 
-    .login-heading {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 56px; font-weight: 900;
-      line-height: 0.95; letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-    .login-heading span {
-      display: block;
-      background: linear-gradient(135deg, var(--neon) 0%, var(--lime) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .login-sub {
-      font-size: 14px; color: var(--text-2); margin-bottom: 36px;
-      font-weight: 300; line-height: 1.6;
-    }
+    /* BOTTOM SHEET */
+    .sheet-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s both;}
+    .bottom-sheet{background:var(--bg-card);border:1px solid var(--border);border-radius:28px 28px 0 0;width:100%;max-width:430px;padding:28px 22px 52px;animation:sheetUp .35s cubic-bezier(.22,.68,0,1.2) both;max-height:90vh;overflow-y:auto;}
+    .sheet-handle{width:36px;height:4px;background:var(--text-3);border-radius:99px;margin:0 auto 20px;opacity:.4;}
+    .sheet-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;letter-spacing:1px;margin-bottom:6px;}
+    .sheet-sub{font-size:13px;color:var(--text-2);margin-bottom:20px;line-height:1.6;}
 
-    .input-group { position: relative; margin-bottom: 12px; }
-    .input-icon {
-      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
-      color: var(--text-3); pointer-events: none;
-    }
-    .input-field {
-      width: 100%; background: var(--bg-raised);
-      border: 1.5px solid var(--border);
-      border-radius: var(--r-md); padding: 16px 20px 16px 46px;
-      font-size: 16px; font-weight: 600; color: var(--text-1);
-      letter-spacing: 4px; text-align: left; outline: none;
-      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
-    }
-    .input-field::placeholder { letter-spacing: 0; font-size: 13px; color: var(--text-3); font-weight: 400; }
-    .input-field:focus {
-      border-color: var(--neon);
-      box-shadow: 0 0 0 4px rgba(99,211,255,0.10), 0 0 20px rgba(99,211,255,0.08);
-      background: var(--bg-hover);
-    }
+    /* MODE CARDS */
+    .mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .mode-card{padding:18px 12px;background:var(--bg-raised);border:2px solid var(--border);border-radius:var(--r-md);text-align:center;cursor:pointer;transition:all .2s;}
+    .mode-card:hover{border-color:rgba(99,211,255,.3);}
+    .mode-card.sel-sensor{border-color:var(--neon);background:var(--neon-dim);}
+    .mode-card.sel-image{border-color:var(--gold);background:var(--gold-dim);}
+    .mode-icon{font-size:32px;margin-bottom:10px;}
+    .mode-num{font-size:10px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
+    .mode-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;}
+    .mode-desc{font-size:10px;color:var(--text-3);margin-top:4px;line-height:1.5;}
+    .mode-info-sensor{font-size:11px;font-weight:600;color:var(--neon);margin-top:6px;}
+    .mode-info-image{font-size:11px;font-weight:600;color:var(--gold);margin-top:6px;}
 
-    .btn-login {
-      width: 100%; padding: 18px;
-      background: linear-gradient(135deg, var(--neon), var(--neon-mid));
-      color: #080810; border: none; border-radius: var(--r-md);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 18px; font-weight: 800; letter-spacing: 2px;
-      text-transform: uppercase;
-      transition: transform 0.15s, box-shadow 0.25s, opacity 0.2s;
-      position: relative; overflow: hidden;
-    }
-    .btn-login::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
-      opacity: 0; transition: opacity 0.2s;
-    }
-    .btn-login:hover { box-shadow: 0 0 40px var(--neon-glow); opacity: 0.95; }
-    .btn-login:hover::after { opacity: 1; }
-    .btn-login:active { transform: scale(0.97); }
-    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    /* GOAL SHEET */
+    .goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .goal-chip{padding:16px 12px;text-align:center;cursor:pointer;background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-md);transition:all .2s;}
+    .goal-chip:hover{border-color:rgba(99,211,255,.3);}
+    .goal-chip.sel{border-color:var(--neon);background:var(--neon-dim);}
+    .goal-chip-num{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;}
+    .goal-chip-lbl{font-size:11px;color:var(--text-3);}
 
-    .login-divider {
-      display: flex; align-items: center; gap: 12px;
-      margin: 20px 0; color: var(--text-3); font-size: 11px;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
-    .login-divider::before, .login-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
+    /* UPLOAD SHEET */
+    .upload-zone{border:2px dashed var(--border);border-radius:var(--r-lg);padding:28px 20px;text-align:center;cursor:pointer;transition:all .25s;background:var(--bg-raised);margin-bottom:14px;}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--gold);background:var(--gold-dim);}
+    .upload-icon{font-size:40px;margin-bottom:10px;}
+    .upload-text{font-size:14px;color:var(--text-2);font-weight:600;}
+    .upload-sub{font-size:11px;color:var(--text-3);margin-top:4px;}
+    .upload-preview{width:100%;max-height:220px;object-fit:contain;border-radius:var(--r-md);margin-top:12px;border:1px solid var(--border);}
+    .gemini-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-sm);font-size:12px;margin-bottom:14px;font-weight:500;}
+    .gs-reading{background:var(--neon-dim);color:var(--neon);border:1px solid rgba(99,211,255,.2);}
+    .gs-done{background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.2);}
+    .gs-warn{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2);}
+    .gs-err{background:rgba(248,113,113,.1);color:var(--danger);border:1px solid rgba(248,113,113,.2);}
+    .steps-confirm-box{background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:14px;}
+    .scb-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+    .scb-input{width:100%;background:transparent;border:none;font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--text-1);text-align:center;outline:none;letter-spacing:4px;}
+    .scb-input:focus{color:var(--neon);}
+    .scb-unit{font-size:11px;color:var(--text-3);text-align:center;margin-top:2px;text-transform:uppercase;letter-spacing:1px;}
 
-    .login-features {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    }
-    .login-feature {
-      background: var(--bg-raised); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 10px 12px;
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; color: var(--text-2);
-    }
-    .login-feature .feat-icon { font-size: 16px; }
+    /* SHEET BUTTONS */
+    .btn-sheet{width:100%;padding:16px;border-radius:var(--r-md);border:none;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;transition:opacity .2s,transform .15s;margin-bottom:8px;}
+    .btn-sheet:active{transform:scale(.97);}
+    .btn-sheet-neon{background:linear-gradient(135deg,var(--neon),var(--neon-mid));color:#080810;}
+    .btn-sheet-gold{background:linear-gradient(135deg,var(--gold),#f59e0b);color:#080810;}
+    .btn-sheet-lime{background:linear-gradient(135deg,var(--lime),#65a30d);color:#080810;}
+    .btn-sheet-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-2);}
 
-    /* =====================================================
-       TOP HEADER
-    ===================================================== */
-    .header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 20px 0;
-    }
-    .header-brand {
-      display: flex; flex-direction: column;
-    }
-    .brand-label {
-      font-size: 10px; color: var(--text-3);
-      letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
-    }
-    .brand-name {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 26px; font-weight: 900; letter-spacing: 2px;
-      background: linear-gradient(135deg, var(--neon), var(--lime));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      line-height: 1;
-    }
-    .header-actions { display: flex; gap: 8px; }
-    .hdr-btn {
-      width: 40px; height: 40px; border-radius: var(--r-sm);
-      background: var(--bg-raised); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-2); transition: all 0.2s;
-    }
-    .hdr-btn:hover { background: var(--bg-hover); color: var(--text-1); border-color: var(--border-glow); }
-    .hdr-btn svg { width: 17px; height: 17px; }
-
-    /* =====================================================
-       USER HERO STRIP
-    ===================================================== */
-    .user-hero {
-      margin: 16px 20px 0;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      padding: 16px 18px;
-      display: flex; align-items: center; gap: 14px;
-      position: relative; overflow: hidden;
-    }
-    .user-hero::after {
-      content: '';
-      position: absolute; right: -30px; top: -30px;
-      width: 120px; height: 120px; border-radius: 50%;
-      background: radial-gradient(circle, var(--neon-dim), transparent 70%);
-    }
-    .user-avatar {
-      width: 48px; height: 48px; border-radius: 14px;
-      background: linear-gradient(135deg, var(--neon), var(--lime));
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 22px; font-weight: 900; color: #080810;
-      flex-shrink: 0;
-    }
-    .user-info { flex: 1; }
-    .user-greeting { font-size: 11px; color: var(--text-3); font-weight: 500; letter-spacing: 0.5px; }
-    .user-name {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 22px; font-weight: 800; letter-spacing: 0.5px; line-height: 1.1;
-    }
-    .user-dept { font-size: 11px; color: var(--neon); font-weight: 500; margin-top: 1px; }
-    .user-streak {
-      display: flex; flex-direction: column; align-items: center;
-      background: var(--lime-dim); border: 1px solid rgba(163,230,53,0.15);
-      border-radius: 10px; padding: 6px 10px;
-    }
-    .streak-num { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: var(--lime); line-height: 1; }
-    .streak-label { font-size: 9px; color: var(--text-3); letter-spacing: 0.5px; text-transform: uppercase; }
-
-    /* =====================================================
-       TAB NAV
-    ===================================================== */
-    .tab-bar {
-      display: flex; gap: 6px;
-      margin: 14px 20px 0;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 5px;
-    }
-    .tab-item {
-      flex: 1; padding: 9px 8px;
-      border-radius: 11px; border: none;
-      background: transparent; color: var(--text-3);
-      font-family: 'Barlow', 'Sarabun', sans-serif;
-      font-size: 12px; font-weight: 600;
-      letter-spacing: 0.3px;
-      transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 5px;
-    }
-    .tab-item.active {
-      background: linear-gradient(135deg, rgba(99,211,255,0.15), rgba(163,230,53,0.10));
-      color: var(--neon);
-      border: 1px solid rgba(99,211,255,0.2);
-      box-shadow: 0 0 16px rgba(99,211,255,0.08);
-    }
-    .tab-item svg { width: 14px; height: 14px; }
-
-    /* =====================================================
-       STATS ROW
-    ===================================================== */
-    .stats-row {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 8px; margin: 14px 20px 0;
-    }
-    .stat-tile {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 14px 10px;
-      text-align: center;
-      animation: fadeUp 0.5s both;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .stat-tile:hover { border-color: var(--border-glow); box-shadow: 0 0 20px rgba(99,211,255,0.06); }
-    .stat-tile-icon { font-size: 16px; margin-bottom: 4px; }
-    .stat-tile-val {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 24px; font-weight: 800; color: var(--text-1); line-height: 1;
-    }
-    .stat-tile-label { font-size: 9px; color: var(--text-3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* =====================================================
-       MAIN RING
-    ===================================================== */
-    .ring-section {
-      margin: 16px 20px 0;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .ring-outer {
-      position: relative;
-      width: 220px; height: 220px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .ring-svg { position: absolute; inset: 0; transform: rotate(-90deg); }
-    .ring-track { fill: none; stroke: var(--bg-raised); stroke-width: 12; }
-    .ring-fill {
-      fill: none; stroke-width: 12; stroke-linecap: round;
-      stroke-dasharray: 565; stroke-dashoffset: 565;
-      transition: stroke-dashoffset 0.8s cubic-bezier(.22,.68,0,1.2);
-    }
-    .ring-fill.gradient-stroke { stroke: url(#ringGrad); }
-    .ring-glow {
-      fill: none; stroke-width: 18; stroke-linecap: round;
-      stroke-dasharray: 565; stroke-dashoffset: 565;
-      opacity: 0.15;
-      transition: stroke-dashoffset 0.8s cubic-bezier(.22,.68,0,1.2);
-      stroke: var(--neon); filter: blur(6px);
-    }
-
-    .ring-core {
-      z-index: 2; text-align: center;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .ring-steps-val {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 58px; font-weight: 900; line-height: 1;
-      background: linear-gradient(180deg, var(--text-1) 60%, var(--text-2) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      transition: transform 0.15s;
-    }
-    .ring-steps-val.pop { animation: stepPop 0.3s cubic-bezier(.22,.68,0,1.4); }
-    @keyframes stepPop {
-      0%   { transform: scale(1); }
-      40%  { transform: scale(1.08); }
-      100% { transform: scale(1); }
-    }
-    .ring-unit { font-size: 11px; color: var(--text-3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
-    .ring-status {
-      margin-top: 6px; padding: 4px 12px;
-      border-radius: 99px; font-size: 10px; font-weight: 600;
-      letter-spacing: 1px; text-transform: uppercase;
-      background: var(--bg-raised); color: var(--text-3);
-      border: 1px solid var(--border);
-      transition: all 0.3s;
-    }
-    .ring-status.active {
-      background: rgba(99,211,255,0.1);
-      color: var(--neon); border-color: rgba(99,211,255,0.3);
-      box-shadow: 0 0 16px rgba(99,211,255,0.15);
-      animation: statusPulse 2s ease-in-out infinite;
-    }
-    @keyframes statusPulse {
-      0%,100% { box-shadow: 0 0 16px rgba(99,211,255,0.15); }
-      50%      { box-shadow: 0 0 28px rgba(99,211,255,0.35); }
-    }
-
-    @keyframes ringWalking {
-      0%,100% { filter: drop-shadow(0 0 6px var(--neon-glow)); }
-      50%      { filter: drop-shadow(0 0 18px var(--neon-glow)) drop-shadow(0 0 36px rgba(99,211,255,0.2)); }
-    }
-    .ring-fill.walking { animation: ringWalking 1.8s ease-in-out infinite; }
-
-    /* =====================================================
-       GOAL BAR
-    ===================================================== */
-    .goal-section { margin: 14px 20px 0; }
-    .goal-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 16px 18px;
-    }
-    .goal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .goal-label { font-size: 11px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
-    .goal-pct {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 20px; font-weight: 800;
-      background: linear-gradient(135deg, var(--neon), var(--lime));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .goal-track { height: 8px; background: var(--bg-raised); border-radius: 99px; overflow: hidden; position: relative; }
-    .goal-progress {
-      height: 100%; border-radius: 99px;
-      background: linear-gradient(90deg, var(--neon), var(--lime));
-      box-shadow: 0 0 12px var(--neon-glow);
-      transition: width 0.8s cubic-bezier(.22,.68,0,1.2);
-      position: relative;
-    }
-    .goal-progress::after {
-      content: '';
-      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-      width: 12px; height: 12px; border-radius: 50%;
-      background: white;
-      box-shadow: 0 0 8px var(--neon);
-    }
-    .goal-feet { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-3); }
-
-    /* =====================================================
-       METRICS GRID
-    ===================================================== */
-    .metrics-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 8px; margin: 8px 20px 0;
-    }
-    .metric-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 14px 16px;
-      display: flex; align-items: center; gap: 12px;
-      transition: border-color 0.2s;
-    }
-    .metric-card:hover { border-color: var(--border-glow); }
-    .metric-icon-wrap {
-      width: 42px; height: 42px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 18px;
-    }
-    .metric-body {}
-    .metric-val {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 24px; font-weight: 800; line-height: 1;
-    }
-    .metric-lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-
-    /* =====================================================
-       SENSOR DEBUG
-    ===================================================== */
-    .sensor-bar {
-      margin: 10px 20px 0;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 8px 14px;
-      display: flex; align-items: center; gap: 10px;
-      font-size: 11px; color: var(--text-3); font-family: 'Courier New', monospace;
-    }
-    .sensor-dot {
-      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-      background: var(--text-3); transition: all 0.3s;
-    }
-    .sensor-dot.on   { background: var(--neon); box-shadow: 0 0 8px var(--neon); animation: blink 1s infinite; }
-    .sensor-dot.err  { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-    .sensor-dot.sim  { background: var(--lime); box-shadow: 0 0 8px var(--lime-glow); animation: blink 1.5s infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* =====================================================
-       CONTROLS
-    ===================================================== */
-    .controls { margin: 12px 20px 0; display: flex; flex-direction: column; gap: 10px; }
-
-    .btn-main {
-      width: 100%; padding: 20px;
-      border-radius: var(--r-md); border: none;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 20px; font-weight: 800; letter-spacing: 2px;
-      text-transform: uppercase;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      transition: transform 0.15s, box-shadow 0.25s;
-      position: relative; overflow: hidden;
-    }
-    .btn-main::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 50%);
-    }
-    .btn-main:active { transform: scale(0.97); }
-    .btn-main svg { width: 22px; height: 22px; }
-
-    .btn-start {
-      background: linear-gradient(135deg, var(--neon), var(--neon-mid));
-      color: #080810;
-      box-shadow: 0 4px 32px rgba(99,211,255,0.3);
-    }
-    .btn-start:hover { box-shadow: 0 4px 48px rgba(99,211,255,0.5); }
-
-    .btn-pause {
-      background: var(--bg-raised);
-      color: #fbbf24;
-      border: 1.5px solid rgba(251,191,36,0.4) !important;
-      box-shadow: 0 4px 20px rgba(251,191,36,0.12);
-    }
-
-    .btn-save {
-      width: 100%; padding: 17px;
-      border-radius: var(--r-md); border: 1.5px solid var(--border);
-      background: transparent; color: var(--text-3);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 18px; font-weight: 700; letter-spacing: 1.5px;
-      text-transform: uppercase;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: all 0.25s; cursor: not-allowed;
-    }
-    .btn-save svg { width: 18px; height: 18px; }
-    .btn-save.ready {
-      border-color: rgba(163,230,53,0.4);
-      color: var(--lime); cursor: pointer;
-      background: var(--lime-dim);
-      box-shadow: 0 0 20px rgba(163,230,53,0.08);
-    }
-    .btn-save.ready:hover { box-shadow: 0 0 32px rgba(163,230,53,0.2); border-color: rgba(163,230,53,0.6); }
-    .btn-save.ready:active { transform: scale(0.97); }
-
-    .btn-sim {
-      background: none; border: none;
-      font-size: 11px; color: var(--text-3);
-      text-decoration: underline; padding: 4px;
-      transition: color 0.2s; letter-spacing: 0.3px;
-    }
-    .btn-sim:hover { color: var(--text-2); }
-    .btn-sim.urgent { color: var(--danger); animation: blink 1s infinite; }
-
-    /* =====================================================
-       HISTORY VIEW
-    ===================================================== */
-    .history-section { margin: 14px 20px 0; flex: 1; }
-    .history-summary {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 8px; margin-bottom: 14px;
-    }
-    .history-sum-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 14px;
-      text-align: center;
-    }
-    .hscard-val {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 28px; font-weight: 800; color: var(--neon);
-    }
-    .hscard-lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
-
-    .history-list-title {
-      font-size: 11px; color: var(--text-3);
-      text-transform: uppercase; letter-spacing: 1px;
-      margin-bottom: 10px; font-weight: 600;
-    }
-    .history-empty {
-      text-align: center; padding: 60px 20px;
-      color: var(--text-3);
-    }
-    .history-empty-icon { font-size: 48px; margin-bottom: 12px; }
-    .history-empty p { font-size: 14px; line-height: 1.6; }
-
-    .hist-item {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 14px 16px;
-      margin-bottom: 8px;
-      display: grid; grid-template-columns: auto 1fr auto;
-      gap: 14px; align-items: center;
-      animation: fadeUp 0.4s both;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-    .hist-item:hover { border-color: var(--border-glow); transform: translateX(2px); }
-    .hist-date-box {
-      background: var(--bg-raised); border-radius: 10px;
-      padding: 8px 10px; text-align: center; min-width: 46px;
-    }
-    .hist-day { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; line-height: 1; color: var(--text-1); }
-    .hist-mon { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
-    .hist-steps { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: var(--text-1); }
-    .hist-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-    .hist-badge {
-      font-size: 10px; font-weight: 700; padding: 4px 10px;
-      border-radius: 99px; letter-spacing: 0.3px;
-    }
-    .hist-badge.hit  { background: rgba(74,222,128,0.1); color: var(--success); border: 1px solid rgba(74,222,128,0.2); }
-    .hist-badge.miss { background: rgba(248,113,113,0.1); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
-
-    /* =====================================================
-       GOAL MODAL (bottom sheet)
-    ===================================================== */
-    .sheet-overlay {
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
-      display: flex; align-items: flex-end; justify-content: center;
-      animation: fadeIn 0.2s both;
-    }
-    .bottom-sheet {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 28px 28px 0 0;
-      width: 100%; max-width: 420px;
-      padding: 28px 24px 48px;
-      animation: sheetUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
-    }
-    .sheet-handle { width: 36px; height: 4px; background: var(--text-3); border-radius: 99px; margin: 0 auto 24px; opacity: 0.4; }
-    .sheet-title { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: 1px; margin-bottom: 20px; }
-    .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-    .goal-chip {
-      padding: 16px 12px; text-align: center; cursor: pointer;
-      background: var(--bg-raised); border: 1.5px solid var(--border);
-      border-radius: var(--r-md); transition: all 0.2s;
-      font-family: 'Barlow', 'Sarabun', sans-serif;
-    }
-    .goal-chip:hover { border-color: rgba(99,211,255,0.3); background: var(--neon-dim); }
-    .goal-chip.sel { border-color: var(--neon); background: var(--neon-dim); box-shadow: 0 0 20px rgba(99,211,255,0.1); }
-    .goal-chip-num { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: var(--text-1); }
-    .goal-chip-lbl { font-size: 11px; color: var(--text-3); }
-    .btn-sheet-save {
-      width: 100%; padding: 17px;
-      background: linear-gradient(135deg, var(--neon), var(--neon-mid));
-      color: #080810; border: none; border-radius: var(--r-md);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 18px; font-weight: 800; letter-spacing: 1.5px;
-      text-transform: uppercase;
-    }
-
-    /* =====================================================
-       SWEETALERT2 CUSTOM THEME
-    ===================================================== */
-    .swal2-popup {
-      background: var(--bg-card) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 24px !important;
-      font-family: 'Barlow', 'Sarabun', sans-serif !important;
-      color: var(--text-1) !important;
-    }
-    .swal2-title { color: var(--text-1) !important; font-family: 'Barlow Condensed', sans-serif !important; letter-spacing: 1px !important; }
-    .swal2-html-container { color: var(--text-2) !important; font-size: 14px !important; }
-    .swal2-confirm {
-      background: linear-gradient(135deg, var(--neon), var(--neon-mid)) !important;
-      color: #080810 !important; font-family: 'Barlow Condensed', sans-serif !important;
-      font-size: 16px !important; font-weight: 800 !important; letter-spacing: 1.5px !important;
-      border-radius: 12px !important; padding: 12px 28px !important;
-    }
-    .swal2-cancel {
-      background: var(--bg-raised) !important; color: var(--text-2) !important;
-      border: 1px solid var(--border) !important;
-      font-family: 'Barlow Condensed', sans-serif !important;
-      font-size: 16px !important; font-weight: 700 !important; letter-spacing: 1px !important;
-      border-radius: 12px !important; padding: 12px 28px !important;
-    }
-    .swal2-icon { border-color: var(--neon) !important; color: var(--neon) !important; }
-    .swal2-icon.swal2-success { border-color: var(--success) !important; }
-    .swal2-icon.swal2-success [class^='swal2-success-line'] { background: var(--success) !important; }
-    .swal2-icon.swal2-success .swal2-success-ring { border-color: rgba(74,222,128,0.3) !important; }
-    .swal2-icon.swal2-error   { border-color: var(--danger) !important; color: var(--danger) !important; }
-    .swal2-icon.swal2-error [class^='swal2-x-mark-line'] { background: var(--danger) !important; }
-    .swal2-loader { border-color: var(--neon) transparent var(--neon) transparent !important; }
-    .swal2-timer-progress-bar { background: linear-gradient(90deg, var(--neon), var(--lime)) !important; }
-
-    /* =====================================================
-       INLINE SPINNER (for buttons)
-    ===================================================== */
-    .spin-ring {
-      display: inline-block; width: 18px; height: 18px;
-      border-radius: 50%; vertical-align: middle;
-      border: 2px solid rgba(8,8,16,0.2);
-      border-top-color: #080810;
-      animation: rotate 0.7s linear infinite;
-    }
-    @keyframes rotate { to { transform: rotate(360deg); } }
-
-    /* =====================================================
-       KEYFRAMES LIBRARY
-    ===================================================== */
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; } to { opacity: 1; }
-    }
-    @keyframes sheetUp {
-      from { transform: translateY(100%); }
-      to   { transform: translateY(0); }
-    }
-    @keyframes iconPop {
-      from { opacity: 0; transform: scale(0.6); }
-      to   { opacity: 1; transform: scale(1); }
-    }
+    /* SWAL CUSTOM */
+    .swal2-popup{background:var(--bg-card)!important;border:1px solid var(--border)!important;border-radius:24px!important;font-family:'Barlow','Sarabun',sans-serif!important;color:var(--text-1)!important;}
+    .swal2-title{color:var(--text-1)!important;font-family:'Barlow Condensed',sans-serif!important;letter-spacing:1px!important;}
+    .swal2-html-container{color:var(--text-2)!important;font-size:14px!important;}
+    .swal2-confirm{background:linear-gradient(135deg,var(--neon),var(--neon-mid))!important;color:#080810!important;font-family:'Barlow Condensed',sans-serif!important;font-size:16px!important;font-weight:800!important;letter-spacing:1.5px!important;border-radius:12px!important;padding:12px 28px!important;}
+    .swal2-cancel{background:var(--bg-raised)!important;color:var(--text-2)!important;border:1px solid var(--border)!important;font-family:'Barlow Condensed',sans-serif!important;font-size:16px!important;font-weight:700!important;letter-spacing:1px!important;border-radius:12px!important;padding:12px 28px!important;}
+    .swal2-loader{border-color:var(--neon) transparent var(--neon) transparent!important;}
+    .swal2-timer-progress-bar{background:linear-gradient(90deg,var(--neon),var(--lime))!important;}
+    .swal2-icon.swal2-success .swal2-success-ring{border-color:rgba(74,222,128,.3)!important;}
+    .swal2-icon.swal2-success [class^='swal2-success-line']{background:var(--success)!important;}
+    .spin-ring{display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:middle;border:2px solid rgba(8,8,16,.25);border-top-color:#080810;animation:rotate .7s linear infinite;}
+    .spin-ring-sm{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;border:2px solid rgba(99,211,255,.3);border-top-color:var(--neon);animation:rotate .7s linear infinite;}
+    @keyframes rotate{to{transform:rotate(360deg)}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @keyframes iconPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
   </style>
 </head>
 <body>
-
-<!-- SCENE -->
-<div class="scene">
-  <div class="scene-grid"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-</div>
-
-<!-- LOADING SCREEN -->
+<div class="scene"><div class="scene-grid"></div><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <div class="loading-screen" id="loadingScreen">
-  <div class="loading-logo-wrap">
-    <div class="loading-icon">🏃</div>
-    <div class="loading-title">RX RUNNER</div>
-  </div>
+  <div class="loading-icon">👟</div>
+  <div class="loading-title">RX RUNNER</div>
   <div class="dna-loader">
-    <div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div>
-    <div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div>
-    <div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div>
-    <div class="dna-bar"></div>
+    <div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div>
+    <div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div><div class="dna-bar"></div>
   </div>
-  <div class="loading-tip">Initializing sensors...</div>
+  <div class="loading-tip">RX Step Tracker — Loading...</div>
 </div>
-
-<!-- APP ROOT -->
 <div id="root"></div>
 
 <script>
 /* ============================================================
-   CONFIG
+   CONFIG  ← แก้ไขก่อนใช้งาน
    ============================================================ */
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbwlRm4xZAU2Ewu12U6E1dNg33uwou5fYSkfFWklzp56HgvbAu-wpE_9PSTNpq2hBU0MfA/exec'; // ← ใส่ GAS URL ของคุณตรงนี้
+var GAS_URL    = 'YOUR_GAS_URL_HERE';        // GAS Deployment URL
+var GEMINI_KEY = 'YOUR_GEMINI_API_KEY_HERE'; // Gemini API Key
+
+var COMPANY_GOAL = 15000000; // 15 ล้านก้าว
 
 /* ============================================================
-   APP STATE
+   STATE
    ============================================================ */
 var S = {
   user: null,
-  stats: { steps: 0, calories: '0', distance: '0' },
-  history: [],
-  sessionSteps: 0,
-  isWalking: false,
-  isSim: false,
-  intervalId: null,
-  sensorOk: false,
-  sensorTimer: null,
-  dailyGoal: parseInt(localStorage.getItem('rx_goal') || '10000'),
-  view: 'dashboard', // 'dashboard' | 'history'
-
-  // ---- Layer 1: Low-Pass Filter ----
-  lpf: 0,
-  lpfAlpha: 0.12,        // ค่าต่ำ = กรอง noise ดีขึ้น แต่ตอบสนองช้าลง
-
-  // ---- Layer 2: Peak Detection ----
-  prevFiltered: 0,
-  prevDelta: 0,
-
-  // ---- Layer 3: Dynamic Threshold ----
-  magnitudes: [],
-  magWindow: 50,
-  threshMult: 1.15,      // เพิ่มจาก 1.08 → ต้องแรงกว่าค่าเฉลี่ย 15%
-
-  // ---- Layer 4: Cadence Validator ----
-  // การเดิน/วิ่งจริง = 80–160 ก้าว/นาที (0.375s–0.75s ต่อก้าว)
-  // การแกว่งมือถือมักเร็วกว่า 160 หรือช้ากว่า 60 ก้าว/นาที
-  lastStepTime: 0,
-  stepCooldown: 380,     // ขั้นต่ำ 380ms (~158 ก้าว/นาที) ป้องกันแกว่งเร็ว
-  maxStepInterval: 1800, // สูงสุด 1800ms (~33 ก้าว/นาที) ถ้าช้ากว่านี้ = ไม่ใช่เดิน
-
-  // ---- Layer 5: Variance Guard ----
-  // การแกว่งมือถือ → magnitude กระโดดสูงมากและไม่สม่ำเสมอ
-  // การเดินจริง → magnitude ใกล้เคียง gravity (7–13 m/s²) และสม่ำเสมอ
-  recentPeaks: [],       // เก็บค่า peak ล่าสุด 6 ครั้ง
-  peakWindow: 6,
-  maxPeakVariance: 8.0,  // ถ้า variance ของ peaks > 8 → ไม่สม่ำเสมอ = แกว่ง
-  maxAllowedMag: 22.0    // magnitude > 22 m/s² = แกว่งแรงเกินไป ไม่ใช่เดิน
+  stats: { steps:0, calories:'0', distance:'0' },
+  history: [], pending: [],
+  companyGoal: { total:0, goal:15000000, pct:0 },
+  sessionSteps: 0, isWalking: false, sensorOk: false, sensorTimer: null,
+  dailyGoal: parseInt(localStorage.getItem('rx_goal')||'10000'),
+  view: 'dashboard',
+  // 5-Layer signal
+  lpf:0, lpfAlpha:0.12, prevFiltered:0, prevDelta:0, lastStepTime:0,
+  magnitudes:[], magWindow:50, threshMult:1.15, stepCooldown:380,
+  recentPeaks:[], peakWindow:6, maxPeakVariance:8.0, maxAllowedMag:22.0
 };
 
 /* ============================================================
-   JSONP BRIDGE → GAS
+   JSONP
    ============================================================ */
 var _cbId = 0;
 function callGAS(action, payload, onOk, onErr) {
   var cb = '__rx_' + (++_cbId);
   var timer = setTimeout(function() {
     delete window[cb];
-    onErr({ message: 'Timeout — ตรวจสอบ GAS URL / Deploy settings' });
+    onErr({ message: 'Timeout — ตรวจสอบ GAS URL' });
   }, 30000);
-
   window[cb] = function(data) {
     clearTimeout(timer); delete window[cb];
     if (data && data.error) onErr({ message: data.error });
     else onOk(data);
   };
-
-  var qs = 'action=' + encodeURIComponent(action)
-         + '&payload=' + encodeURIComponent(JSON.stringify(payload))
-         + '&callback=' + cb;
+  var qs = 'action='+encodeURIComponent(action)+'&payload='+encodeURIComponent(JSON.stringify(payload))+'&callback='+cb;
   var s = document.createElement('script');
   s.src = GAS_URL + '?' + qs;
   s.onerror = function() {
     clearTimeout(timer); delete window[cb];
-    document.body.removeChild(s);
-    onErr({ message: 'ไม่สามารถเชื่อมต่อ GAS ได้' });
+    if (document.body.contains(s)) document.body.removeChild(s);
+    onErr({ message: 'เชื่อมต่อ GAS ไม่ได้' });
   };
   document.body.appendChild(s);
 }
 
 /* ============================================================
-   SIGNAL PROCESSING — 5-Layer Anti-Swing Pipeline
-   ============================================================
-
-   Layer 1: Low-Pass Filter      → กรอง noise / การสั่นสะเทือนเล็กน้อย
-   Layer 2: Peak Detection        → นับเฉพาะจุดยอดคลื่น (ส้นเท้ากระแทกพื้น)
-   Layer 3: Dynamic Threshold     → ปรับ threshold ตามแรงเดินของแต่ละคน
-   Layer 4: Cadence Validator     → ตรวจจังหวะก้าว 80–158 ก้าว/นาที เท่านั้น
-   Layer 5: Variance Guard        → ตรวจความสม่ำเสมอ ป้องกันการแกว่งสุ่ม
-
+   GEMINI — อ่านก้าวจากภาพ
    ============================================================ */
+async function readStepsFromImage(base64, mimeType) {
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
+  var body = {
+    contents: [{
+      parts: [
+        { text: 'นี่คือ screenshot จากแอปนับก้าว (Health, Samsung Health, Garmin ฯลฯ) กรุณาอ่านจำนวน STEPS (ก้าว) ในรูป แล้วตอบเป็นตัวเลขอย่างเดียวเท่านั้น ห้ามมีข้อความอื่น ห้ามมีหน่วย ถ้าอ่านไม่ได้ให้ตอบ ERROR' },
+        { inline_data: { mime_type: mimeType, data: base64 } }
+      ]
+    }]
+  };
+  var res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+  var data = await res.json();
+  var text = (data.candidates?.[0]?.content?.parts?.[0]?.text || 'ERROR').trim();
+  if (text === 'ERROR' || !text) return null;
+  var num = parseInt(text.replace(/[^0-9]/g,''));
+  return (isNaN(num) || num <= 0) ? null : num;
+}
 
-/* --- Layer 1: Exponential Low-Pass Filter ---
-   Yn = α·Xn + (1−α)·Yn−1  (α = 0.12 → กรอง noise ดี)         */
+/* ============================================================
+   SIGNAL PROCESSING (5 Layers)
+   ============================================================ */
 function lpfFilter(raw) {
   S.lpf = S.lpfAlpha * raw + (1 - S.lpfAlpha) * S.lpf;
   return S.lpf;
 }
-
-/* --- Layer 3: Dynamic Threshold ---
-   mean ของ magnitude ล่าสุด × 1.15 → ต้องแรงกว่าค่าเฉลี่ย 15% */
 function dynThreshold() {
   if (S.magnitudes.length < 5) return 9.8 * S.threshMult;
-  var sum = S.magnitudes.reduce(function(a, b) { return a + b; }, 0);
+  var sum = S.magnitudes.reduce(function(a,b){return a+b;},0);
   return (sum / S.magnitudes.length) * S.threshMult;
 }
-
-/* --- Layer 5: Variance ของ peaks ---
-   การเดินจริง: peaks สม่ำเสมอ → variance ต่ำ
-   การแกว่ง:   peaks กระโดดไม่สม่ำเสมอ → variance สูง           */
 function peakVariance() {
   var p = S.recentPeaks;
-  if (p.length < 3) return 0; // ยังไม่มีข้อมูลพอ → ผ่าน
-  var mean = p.reduce(function(a, b) { return a + b; }, 0) / p.length;
-  var variance = p.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / p.length;
-  return variance;
+  if (p.length < 3) return 0;
+  var mean = p.reduce(function(a,b){return a+b;},0)/p.length;
+  return p.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/p.length;
 }
-
-/* --- Main Pipeline ---                                          */
 function processAcc(rawMag) {
-
-  // [L5-pre] ตรวจ magnitude สูงผิดปกติ → แกว่งแรง → ทิ้งทันที
   if (rawMag > S.maxAllowedMag) return;
-
-  // [L3] เก็บ buffer สำหรับ dynamic threshold
   S.magnitudes.push(rawMag);
   if (S.magnitudes.length > S.magWindow) S.magnitudes.shift();
-
-  // [L1] Low-Pass Filter
   var filtered = lpfFilter(rawMag);
   var delta = filtered - S.prevFiltered;
   S.prevFiltered = filtered;
-
-  // [L2] Peak Detection: delta เปลี่ยนจาก + → − (ถึงจุดยอดแล้วเริ่มลง)
   var isPeak = S.prevDelta > 0 && delta <= 0;
   S.prevDelta = delta;
   if (!isPeak) return;
-
-  // [L3] Dynamic Threshold check
   if (filtered < dynThreshold()) return;
-
   var now = Date.now();
-  var interval = now - S.lastStepTime;
-
-  // [L4] Cadence Validator
-  // ป้องกันเร็วเกิน (< stepCooldown ms = > 158 ก้าว/นาที)
-  if (S.lastStepTime > 0 && interval < S.stepCooldown) return;
-
-  // [L5] Variance Guard — ตรวจเฉพาะเมื่อมีข้อมูลพอ (≥ 3 peaks)
+  if (S.lastStepTime > 0 && (now - S.lastStepTime) < S.stepCooldown) return;
   S.recentPeaks.push(filtered);
   if (S.recentPeaks.length > S.peakWindow) S.recentPeaks.shift();
-
-  if (S.recentPeaks.length >= 3) {
-    var v = peakVariance();
-    // ถ้า variance สูงเกินไป = peaks ไม่สม่ำเสมอ = แกว่ง → ทิ้ง
-    if (v > S.maxPeakVariance) return;
-  }
-
-  // ✅ ผ่านทุก layer → นับก้าว
+  if (S.recentPeaks.length >= 3 && peakVariance() > S.maxPeakVariance) return;
   S.lastStepTime = now;
   addStep(1);
 }
@@ -1003,91 +411,48 @@ function processAcc(rawMag) {
    SENSOR
    ============================================================ */
 function startWalking() {
-  S.isWalking = true; S.sensorOk = false; S.isSim = false;
-  S.lpf = 0; S.prevFiltered = 0; S.prevDelta = 0;
-  S.magnitudes = []; S.recentPeaks = []; S.lastStepTime = 0;
-  updateControls();
-  setSensor('กำลังเชื่อมต่อ...', 'checking');
-
+  S.isWalking = true; S.sensorOk = false;
+  S.lpf=0; S.prevFiltered=0; S.prevDelta=0;
+  S.magnitudes=[]; S.recentPeaks=[]; S.lastStepTime=0;
+  updateControls(); setSensor('กำลังเชื่อมต่อ...','checking');
   if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
     DeviceMotionEvent.requestPermission()
-      .then(function(s) {
-        if (s === 'granted') attachMotion('iOS Safari');
-        else offerSim('ไม่ได้รับสิทธิ์เซ็นเซอร์', 'ระบบ iOS ปฏิเสธการเข้าถึง Motion Sensor');
-      })
-      .catch(function() { attachMotion('iOS Fallback'); });
-  } else {
-    attachMotion('Android / Web');
-  }
+      .then(function(st) {
+        if (st === 'granted') attachMotion('iOS');
+        else { stopWalking(); Swal.fire({icon:'error',title:'ไม่ได้รับสิทธิ์',text:'กรุณาเปิดใน Safari โดยตรง',confirmButtonText:'รับทราบ'}); }
+      }).catch(function() { attachMotion('iOS Fallback'); });
+  } else { attachMotion('Android/Web'); }
 }
-
 function attachMotion(lbl) {
-  setSensor('รอสัญญาณ... ' + lbl, 'checking');
+  setSensor('รอสัญญาณ... '+lbl,'checking');
   window.addEventListener('devicemotion', onMotion);
   if (S.sensorTimer) clearTimeout(S.sensorTimer);
   S.sensorTimer = setTimeout(function() {
     if (!S.sensorOk && S.isWalking) {
-      setSensor('ไม่มีสัญญาณ', 'err');
-      var b = document.getElementById('btnSim');
-      if (b) b.classList.add('urgent');
-      offerSim('ไม่ตรวจพบเซ็นเซอร์', 'อาจเกิดจากเบราว์เซอร์บล็อก หรืออุปกรณ์ไม่รองรับ');
+      stopWalking();
+      Swal.fire({icon:'error',title:'ไม่ตรวจพบเซ็นเซอร์',html:'เบราว์เซอร์บล็อก หรืออุปกรณ์ไม่รองรับ<br><small style="color:var(--text-3)">ลองใช้วิธีอัปโหลดรูปภาพแทนได้ครับ</small>',confirmButtonText:'รับทราบ'});
     }
   }, 3000);
 }
-
 function stopWalking() {
   S.isWalking = false; S.sensorOk = false;
   window.removeEventListener('devicemotion', onMotion);
-  if (S.intervalId) { clearInterval(S.intervalId); S.intervalId = null; }
   if (S.sensorTimer) { clearTimeout(S.sensorTimer); S.sensorTimer = null; }
-  setSensor('หยุดแล้ว', 'off');
-  updateControls();
+  setSensor('หยุดแล้ว','off'); updateControls();
 }
-
 function onMotion(e) {
   if (!S.isWalking) return;
   var acc = e.accelerationIncludingGravity || e.acceleration;
   if (!acc || acc.x == null) return;
   if (!S.sensorOk) {
     S.sensorOk = true;
-    setSensor('เซ็นเซอร์ทำงาน (LPF+Peak+Dyn)', 'on');
+    setSensor('เซ็นเซอร์ทำงาน (5-Layer)','on');
     if (S.sensorTimer) clearTimeout(S.sensorTimer);
   }
-  var m = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
-  processAcc(m);
+  processAcc(Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z));
 }
-
-function offerSim(title, text) {
-  Swal.fire({
-    title: title,
-    html: text + '<br><small style="color:var(--text-3)">ต้องการเปิดโหมดจำลองหรือไม่?</small>',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: '🎮 โหมดจำลอง',
-    cancelButtonText: 'ยกเลิก',
-    customClass: { popup:'swal2-popup' }
-  }).then(function(r) {
-    if (r.isConfirmed) { stopWalking(); startSim(); }
-    else stopWalking();
-  });
-}
-
-function startSim() {
-  S.isWalking = true; S.isSim = true;
-  setSensor('โหมดจำลอง (Simulation)', 'sim');
-  updateControls();
-  S.intervalId = setInterval(function() {
-    if (!S.isWalking) return;
-    addStep(Math.floor(Math.random() * 2) + 1);
-  }, 750);
-}
-
-/* ============================================================
-   STEP COUNTER
-   ============================================================ */
 function addStep(n) {
-  S.sessionSteps += n;
-  updateRing();
+  S.sessionSteps += n; updateRing();
   var el = document.getElementById('ringVal');
   if (el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 }
@@ -1100,205 +465,124 @@ function renderLogin() {
     <div class="login-page">
       <div class="login-card">
         <div class="login-badge">🟢 LIVE SYSTEM</div>
-        <h1 class="login-heading">
-          RX<br><span>RUNNER</span>
-        </h1>
-        <p class="login-sub">ระบบติดตามก้าวเดิน-วิ่ง<br>สำหรับพนักงานองค์กร</p>
-
+        <h1 class="login-heading">RX<br><span>RUNNER</span></h1>
+        <div class="login-company">บริษัท อาร์เอ็กซ์ จำกัด</div>
+        <p class="login-sub">ระบบนับก้าวสุขภาพพนักงาน — พนักงาน 300 คน</p>
+        <div class="login-goal-chip">🎯 เป้าหมายรวม 15,000,000 ก้าว</div>
         <div class="input-group">
-          <span class="input-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </span>
-          <input type="text" id="idInput" class="input-field"
-            placeholder="รหัสพนักงาน เช่น 1406"
-            inputmode="numeric" autocomplete="off" />
+          <span class="input-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <input type="text" id="idInput" class="input-field" placeholder="รหัสพนักงาน" inputmode="numeric" autocomplete="off"/>
         </div>
-
-        <button class="btn-login" id="btnLogin">
-          เข้าสู่ระบบ
-        </button>
-
+        <button class="btn-login" id="btnLogin">เข้าสู่ระบบ</button>
         <div class="login-divider">ฟีเจอร์ระบบ</div>
         <div class="login-features">
-          <div class="login-feature"><span class="feat-icon">📡</span> เซ็นเซอร์จริง</div>
-          <div class="login-feature"><span class="feat-icon">🧠</span> AI นับก้าว</div>
-          <div class="login-feature"><span class="feat-icon">📊</span> ติดตามสถิติ</div>
-          <div class="login-feature"><span class="feat-icon">🏆</span> เป้าหมายรายวัน</div>
+          <div class="login-feature"><span class="feat-icon">📡</span> เซ็นเซอร์จริง 5-Layer</div>
+          <div class="login-feature"><span class="feat-icon">📷</span> อัปโหลดรูปภาพ</div>
+          <div class="login-feature"><span class="feat-icon">🤖</span> Gemini AI อ่านก้าว</div>
+          <div class="login-feature"><span class="feat-icon">🏆</span> เป้าหมายบริษัท</div>
         </div>
       </div>
     </div>`;
-
-  var btn = document.getElementById('btnLogin');
-  var inp = document.getElementById('idInput');
-
-  btn.addEventListener('click', function() {
-    var id = inp.value.trim();
-    if (!id) {
-      Swal.fire({ icon:'warning', title:'กรุณากรอกรหัส', text:'ใส่รหัสพนักงานก่อนนะครับ', confirmButtonText:'ตกลง' });
-      return;
-    }
-    doLogin(id);
-  });
-  inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') btn.click(); });
+  var btn=document.getElementById('btnLogin'), inp=document.getElementById('idInput');
+  btn.addEventListener('click', function(){ var id=inp.value.trim(); if(!id){Swal.fire({icon:'warning',title:'กรุณากรอกรหัส',confirmButtonText:'ตกลง'});return;} doLogin(id); });
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') btn.click(); });
 }
 
 /* ============================================================
-   LOGIN LOGIC
+   AUTH
    ============================================================ */
 function doLogin(id) {
-  var btn = document.getElementById('btnLogin');
-  btn.innerHTML = '<span class="spin-ring"></span> กำลังเข้าสู่ระบบ...';
-  btn.disabled = true;
-
-  callGAS('login', { userId: id },
+  var btn=document.getElementById('btnLogin');
+  btn.innerHTML='<span class="spin-ring"></span> กำลังเข้าสู่ระบบ...'; btn.disabled=true;
+  callGAS('login', {userId:id},
     function(res) {
-      S.user = res.user; S.stats = res.stats; S.history = res.history || [];
+      S.user=res.user; S.stats=res.stats; S.history=res.history||[];
+      S.pending=res.pending||[]; S.companyGoal=res.companyGoal||{total:0,goal:15000000,pct:0};
       renderDashboard();
-      showWelcomePopup();
+      Swal.fire({
+        title:'ยินดีต้อนรับ! 👋',
+        html:`<b style="font-size:18px">${res.user.name} ${res.user.surname}</b><br>
+          <span style="color:var(--neon);font-size:13px">${res.user.department}</span>
+          <div style="margin-top:14px;background:var(--bg-raised);border-radius:14px;padding:14px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${Number(res.stats.steps).toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-top:4px;">ก้าวสะสมทั้งหมด</div>
+          </div>`,
+        confirmButtonText:'🚀 เริ่มนับก้าวเลย!'
+      });
     },
     function(err) {
-      btn.innerHTML = 'เข้าสู่ระบบ'; btn.disabled = false;
-      Swal.fire({ icon:'error', title:'เข้าสู่ระบบไม่สำเร็จ', text: err.message || 'เกิดข้อผิดพลาด', confirmButtonText:'ลองใหม่' });
+      btn.innerHTML='เข้าสู่ระบบ'; btn.disabled=false;
+      Swal.fire({icon:'error',title:'เข้าสู่ระบบไม่สำเร็จ',text:err.message,confirmButtonText:'ลองใหม่'});
     }
   );
 }
-
 function doLogout() {
-  Swal.fire({
-    title: 'ออกจากระบบ?',
-    text: 'ข้อมูล session ที่ยังไม่บันทึกจะหายไป',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'ออกจากระบบ',
-    cancelButtonText: 'ยกเลิก'
-  }).then(function(r) {
-    if (r.isConfirmed) {
-      stopWalking();
-      S.user = null; S.sessionSteps = 0; S.view = 'dashboard';
-      renderLogin();
-    }
-  });
+  Swal.fire({title:'ออกจากระบบ?',icon:'question',showCancelButton:true,confirmButtonText:'ออก',cancelButtonText:'ยกเลิก'})
+  .then(function(r){ if(r.isConfirmed){stopWalking();S.user=null;S.sessionSteps=0;S.view='dashboard';renderLogin();} });
 }
 
 /* ============================================================
-   WELCOME POPUP
-   ============================================================ */
-function showWelcomePopup() {
-  var u = S.user;
-  Swal.fire({
-    title: u.name + ' ' + u.surname,
-    html: `
-      <div style="text-align:center;">
-        <div style="font-size:48px;margin-bottom:8px">👋</div>
-        <div style="font-size:13px;color:var(--neon);font-weight:600;margin-bottom:12px;">${u.position} · ${u.department}</div>
-        <div style="background:var(--bg-raised);border-radius:14px;padding:14px;margin-top:8px;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:900;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${Number(S.stats.steps).toLocaleString()}</div>
-          <div style="font-size:11px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;margin-top:4px;">ก้าวสะสมทั้งหมด</div>
-        </div>
-      </div>`,
-    confirmButtonText: '🚀 เริ่มวิ่งเลย!',
-    showClass: { popup: 'animate__animated animate__fadeInDown' }
-  });
-}
-
-/* ============================================================
-   RENDER: DASHBOARD
+   RENDER: MAIN DASHBOARD
    ============================================================ */
 function renderDashboard() {
-  var u = S.user, stats = S.stats;
-  var pct = Math.min(100, Math.round((S.sessionSteps / S.dailyGoal) * 100));
-  var offset = 565 - (565 * pct / 100);
+  var u=S.user, stats=S.stats;
+  var pct=Math.min(100,Math.round((S.sessionSteps/S.dailyGoal)*100));
+  var offset=565-(565*pct/100);
+  var cpct=parseFloat(S.companyGoal.pct||0);
+  var pendingCount=S.pending.filter(function(p){return p.status==='pending';}).length;
 
   document.getElementById('root').innerHTML = `
     <div class="shell">
-
-      <!-- HEADER -->
       <div class="header">
-        <div class="header-brand">
-          <div class="brand-label">Step Tracker</div>
-          <div class="brand-name">RX RUNNER</div>
-        </div>
+        <div><div class="brand-label">อาร์เอ็กซ์</div><div class="brand-name">RX RUNNER</div></div>
         <div class="header-actions">
-          <button class="hdr-btn" id="btnGoal" title="ตั้งเป้าหมาย">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          </button>
-          <button class="hdr-btn" id="btnLogout" title="ออกจากระบบ">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+          <button class="hdr-btn" id="btnGoal" title="เป้าหมาย"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
+          <button class="hdr-btn" id="btnLogout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
         </div>
       </div>
 
-      <!-- USER HERO -->
+      <div class="company-banner">
+        <div class="cb-top"><div class="cb-title">🏢 เป้าหมายบริษัท — 15,000,000 ก้าว</div><div class="cb-pct" id="cbPct">${cpct.toFixed(1)}%</div></div>
+        <div class="cb-track"><div class="cb-fill" id="cbFill" style="width:${Math.max(0.2,cpct)}%"></div></div>
+        <div class="cb-feet"><span><span class="cb-cur" id="cbCur">${Number(S.companyGoal.total||0).toLocaleString()}</span> ก้าว</span><span class="cb-goal">เป้า 15,000,000</span></div>
+      </div>
+
       <div class="user-hero">
         <div class="user-avatar">${(u.name||'?')[0].toUpperCase()}</div>
-        <div class="user-info">
-          <div class="user-greeting">สวัสดีตอนเช้า 👋</div>
-          <div class="user-name">${u.name} ${u.surname}</div>
-          <div class="user-dept">${u.department}</div>
-        </div>
-        <div class="user-streak">
-          <div class="streak-num">${S.history.length}</div>
-          <div class="streak-label">Sessions</div>
-        </div>
+        <div><div class="user-name">${u.name} ${u.surname}</div><div class="user-dept">${u.department}</div></div>
+        <div class="user-sessions"><div class="sess-num">${S.history.length}</div><div class="sess-lbl">Sessions</div></div>
       </div>
 
-      <!-- TAB -->
       <div class="tab-bar">
-        <button class="tab-item ${S.view==='dashboard'?'active':''}" id="tabDash">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          ภาพรวม
-        </button>
-        <button class="tab-item ${S.view==='history'?'active':''}" id="tabHist">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          ประวัติ
-        </button>
+        <button class="tab-item ${S.view==='dashboard'?'active':''}" id="tabDash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>ภาพรวม</button>
+        <button class="tab-item ${S.view==='history'?'active':''}" id="tabHist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>ประวัติ</button>
+        <button class="tab-item ${S.view==='pending'?'active':''}" id="tabPending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>รอผล${pendingCount>0?` <span class="tab-badge">${pendingCount}</span>`:''}</button>
       </div>
 
-      ${S.view === 'dashboard' ? renderDashView(stats, pct, offset) : renderHistView()}
-
+      ${S.view==='dashboard'?renderDashView(stats,pct,offset):S.view==='history'?renderHistView():renderPendingView()}
     </div>`;
 
-  bindDashboardEvents();
-  if (S.view === 'dashboard') updateRing();
+  bindEvents();
+  if (S.view==='dashboard') updateRing();
 }
 
 /* ============================================================
-   DASHBOARD CONTENT
+   DASH VIEW
    ============================================================ */
 function renderDashView(stats, pct, offset) {
   return `
-    <!-- STATS ROW -->
     <div class="stats-row">
-      <div class="stat-tile" style="animation-delay:0.05s">
-        <div class="stat-tile-icon">👟</div>
-        <div class="stat-tile-val" id="totalSteps">${Number(stats.steps).toLocaleString()}</div>
-        <div class="stat-tile-label">ก้าวสะสม</div>
-      </div>
-      <div class="stat-tile" style="animation-delay:0.10s">
-        <div class="stat-tile-icon">🔥</div>
-        <div class="stat-tile-val">${parseInt(stats.calories).toLocaleString()}</div>
-        <div class="stat-tile-label">Kcal รวม</div>
-      </div>
-      <div class="stat-tile" style="animation-delay:0.15s">
-        <div class="stat-tile-icon">📍</div>
-        <div class="stat-tile-val">${parseFloat(stats.distance).toFixed(1)}</div>
-        <div class="stat-tile-label">km รวม</div>
-      </div>
+      <div class="stat-tile" style="animation-delay:.05s"><div class="stat-tile-icon">👟</div><div class="stat-tile-val" id="totalSteps">${Number(stats.steps).toLocaleString()}</div><div class="stat-tile-label">ก้าวสะสม</div></div>
+      <div class="stat-tile" style="animation-delay:.10s"><div class="stat-tile-icon">🔥</div><div class="stat-tile-val">${parseInt(stats.calories).toLocaleString()}</div><div class="stat-tile-label">Kcal รวม</div></div>
+      <div class="stat-tile" style="animation-delay:.15s"><div class="stat-tile-icon">📍</div><div class="stat-tile-val">${parseFloat(stats.distance).toFixed(1)}</div><div class="stat-tile-label">km รวม</div></div>
     </div>
-
-    <!-- RING -->
     <div class="ring-section">
       <div class="ring-outer">
-        <svg class="ring-svg" viewBox="0 0 200 200" width="220" height="220">
-          <defs>
-            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#63d3ff"/>
-              <stop offset="100%" stop-color="#a3e635"/>
-            </linearGradient>
-          </defs>
+        <svg class="ring-svg" viewBox="0 0 200 200" width="215" height="215">
+          <defs><linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#63d3ff"/><stop offset="100%" stop-color="#a3e635"/></linearGradient></defs>
           <circle class="ring-track" cx="100" cy="100" r="90"/>
           <circle class="ring-glow" cx="100" cy="100" r="90" id="ringGlow" style="stroke-dashoffset:${offset}"/>
-          <circle class="ring-fill gradient-stroke" cx="100" cy="100" r="90" id="ringFill" style="stroke-dasharray:565;stroke-dashoffset:${offset}"/>
+          <circle class="ring-fill" cx="100" cy="100" r="90" id="ringFill" stroke="url(#rg)" style="stroke-dasharray:565;stroke-dashoffset:${offset}"/>
         </svg>
         <div class="ring-core">
           <div class="ring-steps-val" id="ringVal">0</div>
@@ -1307,327 +591,333 @@ function renderDashView(stats, pct, offset) {
         </div>
       </div>
     </div>
-
-    <!-- GOAL BAR -->
     <div class="goal-section">
       <div class="goal-card">
-        <div class="goal-row">
-          <div class="goal-label">🎯 เป้าหมายวันนี้</div>
-          <div class="goal-pct" id="goalPct">${pct}%</div>
-        </div>
-        <div class="goal-track">
-          <div class="goal-progress" id="goalBar" style="width:${pct}%"></div>
-        </div>
-        <div class="goal-feet">
-          <span id="goalCur">0 ก้าว</span>
-          <span>${S.dailyGoal.toLocaleString()} ก้าว</span>
-        </div>
+        <div class="goal-row"><div class="goal-label">🎯 เป้าหมายวันนี้</div><div class="goal-pct" id="goalPct">${pct}%</div></div>
+        <div class="goal-track"><div class="goal-progress" id="goalBar" style="width:${pct}%"></div></div>
+        <div class="goal-feet"><span id="goalCur">0 ก้าว</span><span>${S.dailyGoal.toLocaleString()} ก้าว</span></div>
       </div>
     </div>
-
-    <!-- SESSION METRICS -->
     <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-icon-wrap" style="background:rgba(251,146,60,0.12);">🔥</div>
-        <div class="metric-body">
-          <div class="metric-val" id="mCal" style="color:var(--orange)">0.0</div>
-          <div class="metric-lbl">Kcal Session</div>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon-wrap" style="background:rgba(99,211,255,0.10);">📍</div>
-        <div class="metric-body">
-          <div class="metric-val" id="mDist" style="color:var(--neon)">0.00</div>
-          <div class="metric-lbl">Km Session</div>
-        </div>
-      </div>
+      <div class="metric-card"><div class="metric-icon-wrap" style="background:var(--orange-dim)">🔥</div><div><div class="metric-val" id="mCal" style="color:var(--orange)">0.0</div><div class="metric-lbl">Kcal Session</div></div></div>
+      <div class="metric-card"><div class="metric-icon-wrap" style="background:var(--neon-dim)">📍</div><div><div class="metric-val" id="mDist" style="color:var(--neon)">0.00</div><div class="metric-lbl">Km Session</div></div></div>
     </div>
-
-    <!-- SENSOR DEBUG -->
-    <div class="sensor-bar">
-      <div class="sensor-dot" id="sensorDot"></div>
-      <span id="sensorTxt" style="flex:1">รอคำสั่ง</span>
-      <span id="sensorMode" style="color:var(--text-4)">—</span>
-    </div>
-
-    <!-- CONTROLS -->
+    <div class="sensor-bar"><div class="sensor-dot" id="sensorDot"></div><span id="sensorTxt" style="flex:1">รอคำสั่ง</span><span id="sensorMode" style="color:var(--text-4)">—</span></div>
     <div class="controls">
-      <button class="btn-main btn-start" id="btnToggle">
-        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-        เริ่มวิ่ง / START
-      </button>
-      <button class="btn-sim" id="btnSim">ไม่มีสัญญาณ? → ใช้โหมดจำลอง</button>
-      <button class="btn-save" id="btnSave" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-        บันทึกผล
-      </button>
-    </div>
-  `;
+      <button class="btn-main btn-start" id="btnToggle"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><polygon points="5,3 19,12 5,21"/></svg>เริ่มนับก้าว</button>
+      <button class="btn-main btn-upload" id="btnUpload" style="font-size:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>📷 อัปโหลดรูปก้าวจากแอปอื่น</button>
+      <button class="btn-save" id="btnSave" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>บันทึกผล (Sensor)</button>
+    </div>`;
 }
 
 /* ============================================================
-   HISTORY CONTENT
+   HISTORY VIEW
    ============================================================ */
 function renderHistView() {
-  var h = S.history;
-  var totalSessions = h.length;
-  var totalHistSteps = h.reduce(function(a,r) { return a + Number(r[3]); }, 0);
+  var h=S.history;
+  var totalSteps=h.reduce(function(a,r){return a+Number(r.steps||r[3]||0);},0);
+  var rows = h.length ? h.slice().reverse().map(function(r,i) {
+    var steps = Number(r.steps||r[3]||0);
+    var date  = r.date||r[1]||'';
+    var kcal  = parseFloat(r.calories||r[4]||0).toFixed(1);
+    var km    = parseFloat(r.distance||r[5]||0).toFixed(2);
+    var mode  = r.mode||'sensor';
+    var d     = new Date(date);
+    var day   = isNaN(d.getDate())?'—':d.getDate();
+    var mon   = isNaN(d.getMonth())?'':d.toLocaleString('th',{month:'short'});
+    var hit   = steps >= S.dailyGoal;
+    var badge = mode==='image' ? '<span class="hist-badge img">📷 รูปภาพ</span>' : (hit ? '<span class="hist-badge hit">✅ GOAL</span>' : '<span class="hist-badge miss">❌ MISS</span>');
+    return `<div class="hist-item" style="animation-delay:${i*.04}s">
+      <div class="hist-date-box"><div class="hist-day">${day}</div><div class="hist-mon">${mon}</div></div>
+      <div><div class="hist-steps">${steps.toLocaleString()} ก้าว</div><div class="hist-meta">${kcal} kcal · ${km} km · ${mode==='image'?'📷':'📡'}</div></div>
+      ${badge}</div>`;
+  }).join('') : '<div class="history-empty">🏁 ยังไม่มีประวัติ</div>';
 
-  var histHTML = '';
-  if (!h.length) {
-    histHTML = `
-      <div class="history-empty">
-        <div class="history-empty-icon">🏁</div>
-        <p>ยังไม่มีประวัติการวิ่ง<br><span style="font-size:12px;color:var(--text-3)">เริ่มวิ่งและบันทึกก้าวแรกของคุณ!</span></p>
-      </div>`;
-  } else {
-    histHTML = h.slice().reverse().map(function(r, i) {
-      var d = new Date(r[1]);
-      var day = isNaN(d.getDate()) ? '—' : d.getDate();
-      var mon = isNaN(d.getMonth()) ? '' : d.toLocaleString('th', { month:'short' });
-      var hit = Number(r[3]) >= S.dailyGoal;
-      return `
-        <div class="hist-item" style="animation-delay:${i*0.04}s">
-          <div class="hist-date-box">
-            <div class="hist-day">${day}</div>
-            <div class="hist-mon">${mon}</div>
-          </div>
-          <div>
-            <div class="hist-steps">${Number(r[3]).toLocaleString()} ก้าว</div>
-            <div class="hist-meta">${parseFloat(r[4]).toFixed(1)} kcal · ${parseFloat(r[5]).toFixed(2)} km · ${r[2]}</div>
-          </div>
-          <div class="hist-badge ${hit?'hit':'miss'}">${hit?'✅ GOAL':'❌ MISS'}</div>
-        </div>`;
-    }).join('');
-  }
+  return `<div class="history-section">
+    <div class="history-summary">
+      <div class="history-sum-card"><div class="hscard-val">${h.length}</div><div class="hscard-lbl">Sessions</div></div>
+      <div class="history-sum-card"><div class="hscard-val">${(totalSteps/1000).toFixed(1)}K</div><div class="hscard-lbl">ก้าวรวม</div></div>
+    </div>
+    <div class="history-list-title">📋 บันทึกทั้งหมด</div>${rows}</div>`;
+}
 
-  return `
-    <div class="history-section">
-      <div class="history-summary">
-        <div class="history-sum-card">
-          <div class="hscard-val">${totalSessions}</div>
-          <div class="hscard-lbl">Sessions ทั้งหมด</div>
-        </div>
-        <div class="history-sum-card">
-          <div class="hscard-val">${(totalHistSteps/1000).toFixed(1)}K</div>
-          <div class="hscard-lbl">ก้าวสะสมรวม</div>
-        </div>
-      </div>
-      <div class="history-list-title">📋 บันทึกการวิ่ง</div>
-      ${histHTML}
-    </div>`;
+/* ============================================================
+   PENDING VIEW
+   ============================================================ */
+function renderPendingView() {
+  var p=S.pending;
+  var rows = p.length ? p.slice().reverse().map(function(r) {
+    var cls = r.status==='approved'?'badge-approved':r.status==='rejected'?'badge-rejected':'badge-pending';
+    var lbl = r.status==='approved'?'✅ อนุมัติ':r.status==='rejected'?'❌ ปฏิเสธ':'⏳ รออนุมัติ';
+    return `<div class="pending-item">
+      <div><div class="pi-steps">${Number(r.steps||0).toLocaleString()} ก้าว</div><div class="pi-date">📅 ${r.date||''}</div>${r.adminNote?`<div class="pi-note">💬 ${r.adminNote}</div>`:''}</div>
+      <span class="badge ${cls}">${lbl}</span></div>`;
+  }).join('') : '<div class="pending-empty">📭 ไม่มีรายการรอดำเนินการ</div>';
+
+  return `<div class="pending-section">
+    <div class="pending-header"><div class="pending-title">📤 รายการอัปโหลดรูปภาพ</div></div>
+    <div class="pending-card">${rows}</div>
+    <button class="btn-main btn-upload" id="btnUploadPending" style="margin-top:4px;font-size:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>📷 อัปโหลดรูปภาพก้าวใหม่</button>
+  </div>`;
 }
 
 /* ============================================================
    BIND EVENTS
    ============================================================ */
-function bindDashboardEvents() {
+function bindEvents() {
   document.getElementById('btnLogout').addEventListener('click', doLogout);
   document.getElementById('btnGoal').addEventListener('click', showGoalSheet);
-  document.getElementById('tabDash').addEventListener('click', function() { S.view='dashboard'; renderDashboard(); });
-  document.getElementById('tabHist').addEventListener('click', function() { S.view='history'; renderDashboard(); });
+  document.getElementById('tabDash').addEventListener('click', function(){S.view='dashboard';renderDashboard();});
+  document.getElementById('tabHist').addEventListener('click', function(){S.view='history';renderDashboard();});
+  document.getElementById('tabPending').addEventListener('click', function(){S.view='pending';renderDashboard();});
 
   if (S.view === 'dashboard') {
-    document.getElementById('btnToggle').addEventListener('click', function() {
-      S.isWalking ? stopWalking() : startWalking();
-    });
-    document.getElementById('btnSave').addEventListener('click', doSave);
-    document.getElementById('btnSim').addEventListener('click', function() {
-      Swal.fire({
-        title: 'โหมดจำลอง',
-        text: 'ใช้เมื่อเซ็นเซอร์ไม่ทำงาน จะสุ่มก้าวอัตโนมัติ',
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonText: '🎮 เปิดโหมดจำลอง',
-        cancelButtonText: 'ยกเลิก'
-      }).then(function(r) {
-        if (r.isConfirmed) { stopWalking(); startSim(); }
-      });
-    });
+    document.getElementById('btnToggle').addEventListener('click', function(){ S.isWalking ? stopWalking() : showModeSheet(); });
+    document.getElementById('btnUpload').addEventListener('click', showUploadSheet);
+    document.getElementById('btnSave').addEventListener('click', function(){ if(S.sessionSteps>0) doSaveSensor(); });
+  }
+  if (S.view === 'pending') {
+    var ub = document.getElementById('btnUploadPending');
+    if (ub) ub.addEventListener('click', showUploadSheet);
   }
 }
 
 /* ============================================================
-   UI UPDATES
+   MODE SELECTION SHEET
    ============================================================ */
-function updateControls() {
-  var btnToggle = document.getElementById('btnToggle');
-  var btnSave   = document.getElementById('btnSave');
-  var btnSim    = document.getElementById('btnSim');
-  var ring      = document.getElementById('ringFill');
-  var status    = document.getElementById('ringStatus');
-  if (!btnToggle) return;
-
-  if (S.isWalking) {
-    btnToggle.className = 'btn-main btn-pause';
-    btnToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> หยุดชั่วคราว`;
-    if (ring) ring.classList.add('walking');
-    if (btnSave) { btnSave.disabled = true; btnSave.classList.remove('ready'); }
-    if (btnSim) btnSim.style.display = 'none';
-    if (status) { status.className = 'ring-status active'; status.innerText = S.isSim ? '🎮 จำลอง...' : '🏃 กำลังวิ่ง...'; }
-  } else {
-    btnToggle.className = 'btn-main btn-start';
-    btnToggle.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><polygon points="5,3 19,12 5,21"/></svg> เริ่มวิ่ง / START`;
-    if (ring) ring.classList.remove('walking');
-    if (btnSim) { btnSim.style.display = 'block'; btnSim.classList.remove('urgent'); }
-    if (S.sessionSteps > 0 && btnSave) { btnSave.disabled = false; btnSave.classList.add('ready'); }
-    if (status) { status.className = 'ring-status'; status.innerText = 'หยุดชั่วคราว'; }
-  }
-}
-
-function updateRing() {
-  var s   = S.sessionSteps;
-  var cal = (s * 0.04).toFixed(1);
-  var dist= (s * 0.0007).toFixed(2);
-  var pct = Math.min(100, Math.round((s / S.dailyGoal) * 100));
-  var off = 565 - (565 * pct / 100);
-
-  var $ = function(id) { return document.getElementById(id); };
-  if ($('ringVal'))   $('ringVal').innerText   = s.toLocaleString();
-  if ($('mCal'))      $('mCal').innerText       = cal;
-  if ($('mDist'))     $('mDist').innerText      = dist;
-  if ($('goalPct'))   $('goalPct').innerText    = pct + '%';
-  if ($('goalCur'))   $('goalCur').innerText    = s.toLocaleString() + ' ก้าว';
-  if ($('goalBar'))   $('goalBar').style.width  = pct + '%';
-  if ($('ringFill'))  $('ringFill').style.strokeDashoffset = off;
-  if ($('ringGlow'))  $('ringGlow').style.strokeDashoffset = off;
-}
-
-function setSensor(text, state) {
-  var dot  = document.getElementById('sensorDot');
-  var txt  = document.getElementById('sensorTxt');
-  var mode = document.getElementById('sensorMode');
-  if (dot) {
-    dot.className = 'sensor-dot';
-    if (state === 'on')  { dot.classList.add('on');  mode && (mode.innerText = 'LIVE'); }
-    if (state === 'err') { dot.classList.add('err'); mode && (mode.innerText = 'ERR');  }
-    if (state === 'sim') { dot.classList.add('sim'); mode && (mode.innerText = 'SIM');  }
-    if (state === 'off') { mode && (mode.innerText = '—'); }
-  }
-  if (txt) txt.innerText = text;
-}
-
-/* ============================================================
-   GOAL SHEET
-   ============================================================ */
-function showGoalSheet() {
-  var goals = [5000, 7000, 10000, 12000];
+function showModeSheet() {
   var div = document.createElement('div');
   div.innerHTML = `
-    <div class="sheet-overlay" id="sheetOverlay">
+    <div class="sheet-overlay" id="modeOverlay">
       <div class="bottom-sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">🎯 เป้าหมายก้าวต่อวัน</div>
-        <div class="goal-grid">
-          ${goals.map(function(g) {
-            return `<div class="goal-chip ${S.dailyGoal===g?'sel':''}" data-val="${g}">
-              <div class="goal-chip-num">${(g/1000).toFixed(0)}K</div>
-              <div class="goal-chip-lbl">${g.toLocaleString()} ก้าว</div>
-            </div>`;
-          }).join('')}
+        <div class="sheet-title">เลือกรูปแบบการนับก้าว</div>
+        <div class="sheet-sub">เลือกวิธีที่คุณต้องการบันทึกก้าวในครั้งนี้</div>
+        <div class="mode-cards">
+          <div class="mode-card" id="mc1">
+            <div class="mode-icon">📡</div>
+            <div class="mode-num">รูปแบบที่ 1</div>
+            <div class="mode-title">เซ็นเซอร์</div>
+            <div class="mode-info-sensor">นับอัตโนมัติ</div>
+            <div class="mode-desc">ใช้ Motion Sensor ของโทรศัพท์นับก้าวขณะเดิน/วิ่ง บันทึกทันที</div>
+          </div>
+          <div class="mode-card" id="mc2">
+            <div class="mode-icon">📷</div>
+            <div class="mode-num">รูปแบบที่ 2</div>
+            <div class="mode-title">รูปภาพ</div>
+            <div class="mode-info-image">รอ Admin อนุมัติ</div>
+            <div class="mode-desc">แคปรูปจากแอปนับก้าวอื่น Gemini AI จะอ่านจำนวนให้</div>
+          </div>
         </div>
-        <button class="btn-sheet-save" id="btnSheetSave">บันทึกเป้าหมาย</button>
+        <button class="btn-sheet btn-sheet-outline" id="btnCancelMode">ยกเลิก</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById('mc1').addEventListener('click', function(){ document.body.removeChild(div); startWalking(); });
+  document.getElementById('mc2').addEventListener('click', function(){ document.body.removeChild(div); showUploadSheet(); });
+  document.getElementById('btnCancelMode').addEventListener('click', function(){ document.body.removeChild(div); });
+  document.getElementById('modeOverlay').addEventListener('click', function(e){ if(e.target===this) document.body.removeChild(div); });
+}
+
+/* ============================================================
+   IMAGE UPLOAD SHEET (Gemini AI read)
+   ============================================================ */
+function showUploadSheet() {
+  var imgBase64='', imgMime='', detectedSteps=null;
+  var div = document.createElement('div');
+  div.innerHTML = `
+    <div class="sheet-overlay" id="uploadOverlay">
+      <div class="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">📷 อัปโหลดรูปก้าวจากแอปอื่น</div>
+        <div class="sheet-sub">แคปรูป screenshot จากแอปนับก้าว (Health, Samsung Health, Garmin ฯลฯ) Gemini AI จะอ่านจำนวนก้าวให้อัตโนมัติ</div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept="image/*" style="display:none"/>
+          <div class="upload-icon" id="uploadIcon">🖼️</div>
+          <div class="upload-text" id="uploadText">แตะเพื่อเลือกรูปภาพ</div>
+          <div class="upload-sub">รองรับ JPG, PNG · ขนาดไม่เกิน 5MB</div>
+          <img id="uploadPreview" style="display:none" class="upload-preview"/>
+        </div>
+        <div id="geminiStatusWrap"></div>
+        <div class="steps-confirm-box" id="stepsConfirmBox" style="display:none">
+          <div class="scb-label">จำนวนก้าว — ตรวจสอบ / แก้ไขได้</div>
+          <input type="number" id="stepsConfirmInput" class="scb-input" placeholder="0" min="1" max="999999"/>
+          <div class="scb-unit">ก้าว (Steps)</div>
+        </div>
+        <button class="btn-sheet btn-sheet-gold" id="btnSubmitImg" disabled>📤 ส่งรอการอนุมัติ</button>
+        <button class="btn-sheet btn-sheet-outline" id="btnCloseUpload">ยกเลิก</button>
       </div>
     </div>`;
   document.body.appendChild(div);
 
-  var sel = S.dailyGoal;
-  div.querySelectorAll('.goal-chip').forEach(function(el) {
-    el.addEventListener('click', function() {
-      div.querySelectorAll('.goal-chip').forEach(function(x) { x.classList.remove('sel'); });
-      el.classList.add('sel'); sel = parseInt(el.dataset.val);
-    });
+  var zone=document.getElementById('uploadZone');
+  var fileInp=document.getElementById('fileInput');
+  var preview=document.getElementById('uploadPreview');
+  var statusWrap=document.getElementById('geminiStatusWrap');
+  var confirmBox=document.getElementById('stepsConfirmBox');
+  var stepsInp=document.getElementById('stepsConfirmInput');
+  var submitBtn=document.getElementById('btnSubmitImg');
+
+  zone.addEventListener('click', function(){ fileInp.click(); });
+
+  fileInp.addEventListener('change', async function(e) {
+    var file = e.target.files[0]; if (!file) return;
+    if (file.size > 5*1024*1024) { Swal.fire({icon:'error',title:'ไฟล์ใหญ่เกินไป',text:'ขนาดไม่เกิน 5MB'}); return; }
+    imgMime = file.type;
+    var reader = new FileReader();
+    reader.onload = async function(ev) {
+      var result = ev.target.result;
+      imgBase64 = result.split(',')[1];
+      preview.src = result; preview.style.display='block';
+      document.getElementById('uploadIcon').style.display='none';
+      document.getElementById('uploadText').innerText = file.name;
+      confirmBox.style.display='block'; submitBtn.disabled=true; stepsInp.value='';
+
+      // Gemini read
+      statusWrap.innerHTML = '<div class="gemini-status gs-reading"><span class="spin-ring-sm"></span> Gemini AI กำลังอ่านจำนวนก้าว...</div>';
+      try {
+        var steps = await readStepsFromImage(imgBase64, imgMime);
+        if (steps) {
+          detectedSteps = steps; stepsInp.value = steps;
+          statusWrap.innerHTML = `<div class="gemini-status gs-done">✅ Gemini อ่านได้ <b>${steps.toLocaleString()} ก้าว</b> — ตรวจสอบและแก้ไขได้ก่อนส่ง</div>`;
+        } else {
+          statusWrap.innerHTML = '<div class="gemini-status gs-warn">⚠️ Gemini อ่านไม่ได้ — กรุณากรอกจำนวนก้าวเองในช่องด้านล่าง</div>';
+        }
+      } catch(err) {
+        statusWrap.innerHTML = '<div class="gemini-status gs-err">❌ เชื่อมต่อ Gemini ไม่ได้ — กรุณากรอกจำนวนก้าวเอง</div>';
+      }
+      submitBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
   });
-  document.getElementById('btnSheetSave').addEventListener('click', function() {
-    S.dailyGoal = sel;
-    localStorage.setItem('rx_goal', sel);
+
+  stepsInp.addEventListener('input', function(){ submitBtn.disabled = (!stepsInp.value || parseInt(stepsInp.value)<1); });
+
+  submitBtn.addEventListener('click', function() {
+    var steps = parseInt(stepsInp.value);
+    if (!steps || steps < 1) { Swal.fire({icon:'warning',title:'กรุณากรอกจำนวนก้าว',confirmButtonText:'ตกลง'}); return; }
+    if (!imgBase64) { Swal.fire({icon:'warning',title:'กรุณาเลือกรูปภาพ',confirmButtonText:'ตกลง'}); return; }
     document.body.removeChild(div);
-    updateRing();
-    Swal.fire({ icon:'success', title:'บันทึกแล้ว!', text:'เป้าหมาย ' + sel.toLocaleString() + ' ก้าว', timer:1500, showConfirmButton:false });
+    doSubmitImage(steps, imgBase64);
   });
-  div.querySelector('.sheet-overlay').addEventListener('click', function(e) {
-    if (e.target === this) document.body.removeChild(div);
-  });
+  document.getElementById('btnCloseUpload').addEventListener('click', function(){ document.body.removeChild(div); });
+  document.getElementById('uploadOverlay').addEventListener('click', function(e){ if(e.target===this) document.body.removeChild(div); });
 }
 
 /* ============================================================
-   SAVE DATA
+   SAVE: SENSOR MODE
    ============================================================ */
-function doSave() {
-  if (S.sessionSteps === 0) return;
-
+function doSaveSensor() {
+  if (!S.sessionSteps) return;
   Swal.fire({
-    title: 'บันทึกผลการวิ่ง?',
-    html: `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;">
-        <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--neon)">${S.sessionSteps.toLocaleString()}</div>
-          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px">ก้าว</div>
-        </div>
-        <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--orange)">${(S.sessionSteps*0.04).toFixed(1)}</div>
-          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px">Kcal</div>
-        </div>
-        <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--lime)">${(S.sessionSteps*0.0007).toFixed(2)}</div>
-          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px">Km</div>
-        </div>
-      </div>`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '💾 บันทึก',
-    cancelButtonText: 'ยกเลิก'
+    title:'บันทึกผลการนับก้าว?',
+    html:`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px">
+      <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center"><div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--neon)">${S.sessionSteps.toLocaleString()}</div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase">ก้าว</div></div>
+      <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center"><div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--orange)">${(S.sessionSteps*.04).toFixed(1)}</div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase">Kcal</div></div>
+      <div style="background:var(--bg-raised);border-radius:12px;padding:12px;text-align:center"><div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--lime)">${(S.sessionSteps*.0007).toFixed(2)}</div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase">Km</div></div></div>`,
+    icon:'question', showCancelButton:true, confirmButtonText:'💾 บันทึก', cancelButtonText:'ยกเลิก'
   }).then(function(r) {
     if (!r.isConfirmed) return;
-
-    Swal.fire({
-      title: 'กำลังบันทึก...',
-      allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
-      didOpen: function() { Swal.showLoading(); }
-    });
-
-    var payload = {
-      id: S.user.id,
-      steps: S.sessionSteps,
-      calories: (S.sessionSteps * 0.04).toFixed(1),
-      distance: (S.sessionSteps * 0.0007).toFixed(2)
-    };
-
-    callGAS('save', { data: payload },
+    Swal.fire({title:'กำลังบันทึก...',allowOutsideClick:false,showConfirmButton:false,didOpen:function(){Swal.showLoading();}});
+    callGAS('save', {data:{id:S.user.id,steps:S.sessionSteps,calories:(S.sessionSteps*.04).toFixed(1),distance:(S.sessionSteps*.0007).toFixed(2)}},
       function(res) {
-        S.stats = res.stats; S.history = res.history || S.history;
-        var prev = S.sessionSteps; S.sessionSteps = 0;
-        updateRing();
-        var totalEl = document.getElementById('totalSteps');
-        if (totalEl) totalEl.innerText = Number(S.stats.steps).toLocaleString();
-        var btnSave = document.getElementById('btnSave');
-        if (btnSave) { btnSave.disabled = true; btnSave.classList.remove('ready'); }
-
-        var hitGoal = prev >= S.dailyGoal;
-        Swal.fire({
-          icon: 'success',
-          title: hitGoal ? '🏆 ถึงเป้าหมายแล้ว!' : '✅ บันทึกสำเร็จ!',
-          html: hitGoal
-            ? `<span style="color:var(--lime);font-size:16px;font-weight:700">ยอดเยี่ยม! คุณทำได้ถึง ${S.dailyGoal.toLocaleString()} ก้าวแล้ว! 🎉</span>`
-            : `บันทึก <b style="color:var(--neon)">${prev.toLocaleString()} ก้าว</b> เรียบร้อย`,
-          timer: 3000, timerProgressBar: true, showConfirmButton: false
-        });
+        S.stats=res.stats; S.history=res.history||S.history;
+        if(res.companyGoal) S.companyGoal=res.companyGoal;
+        var prev=S.sessionSteps; S.sessionSteps=0; updateRing();
+        var el=document.getElementById('totalSteps'); if(el) el.innerText=Number(S.stats.steps).toLocaleString();
+        var bs=document.getElementById('btnSave'); if(bs){bs.disabled=true;bs.classList.remove('ready');}
+        updateCompanyBanner();
+        Swal.fire({icon:'success',title:prev>=S.dailyGoal?'🏆 ถึงเป้าหมาย!':'✅ บันทึกสำเร็จ!',html:prev>=S.dailyGoal?`<span style="color:var(--lime);font-weight:700">ยอดเยี่ยม! คุณทำได้ ${S.dailyGoal.toLocaleString()} ก้าวแล้ว! 🎉</span>`:`บันทึก <b style="color:var(--neon)">${prev.toLocaleString()} ก้าว</b>`,timer:3000,timerProgressBar:true,showConfirmButton:false});
       },
-      function(err) {
-        Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text: err.message, confirmButtonText:'ลองใหม่' });
-      }
+      function(err) { Swal.fire({icon:'error',title:'บันทึกไม่สำเร็จ',text:err.message,confirmButtonText:'ลองใหม่'}); }
     );
   });
 }
 
 /* ============================================================
-   BOOT
+   SAVE: IMAGE MODE — ส่งรอ Admin
    ============================================================ */
+function doSubmitImage(steps, imageBase64) {
+  Swal.fire({title:'กำลังส่งข้อมูล...',allowOutsideClick:false,showConfirmButton:false,didOpen:function(){Swal.showLoading();}});
+  callGAS('submitPending', {data:{id:S.user.id,steps:steps,calories:(steps*.04).toFixed(1),distance:(steps*.0007).toFixed(2),imageBase64:imageBase64}},
+    function(res) {
+      S.pending.push({id:res.pendingId,date:new Date().toISOString().split('T')[0],steps:steps,status:'pending',adminNote:''});
+      Swal.fire({icon:'success',title:'ส่งข้อมูลสำเร็จ! 📤',html:`<b style="color:var(--gold)">${steps.toLocaleString()} ก้าว</b><br><span style="color:var(--text-2);font-size:13px">รอ Admin อนุมัติ ตรวจสอบได้ที่แท็บ "รอผล"</span>`,timer:3500,timerProgressBar:true,showConfirmButton:false});
+      if(S.view==='pending') renderDashboard();
+    },
+    function(err) { Swal.fire({icon:'error',title:'ส่งไม่สำเร็จ',text:err.message,confirmButtonText:'ลองใหม่'}); }
+  );
+}
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function updateControls() {
+  var btnToggle=document.getElementById('btnToggle');
+  var btnSave=document.getElementById('btnSave');
+  var ring=document.getElementById('ringFill');
+  var status=document.getElementById('ringStatus');
+  if (!btnToggle) return;
+  if (S.isWalking) {
+    btnToggle.className='btn-main btn-pause';
+    btnToggle.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> หยุดชั่วคราว';
+    if(ring) ring.classList.add('walking');
+    if(btnSave){btnSave.disabled=true;btnSave.classList.remove('ready');}
+    if(status){status.className='ring-status active';status.innerText='👟 กำลังนับก้าว...';}
+  } else {
+    btnToggle.className='btn-main btn-start';
+    btnToggle.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><polygon points="5,3 19,12 5,21"/></svg> เริ่มนับก้าว';
+    if(ring) ring.classList.remove('walking');
+    if(S.sessionSteps>0&&btnSave){btnSave.disabled=false;btnSave.classList.add('ready');}
+    if(status){status.className='ring-status';status.innerText='หยุดชั่วคราว';}
+  }
+}
+function updateRing() {
+  var s=S.sessionSteps, cal=(s*.04).toFixed(1), dist=(s*.0007).toFixed(2);
+  var pct=Math.min(100,Math.round((s/S.dailyGoal)*100)), off=565-(565*pct/100);
+  var G=function(id){return document.getElementById(id);};
+  if(G('ringVal')) G('ringVal').innerText=s.toLocaleString();
+  if(G('mCal'))    G('mCal').innerText=cal;
+  if(G('mDist'))   G('mDist').innerText=dist;
+  if(G('goalPct')) G('goalPct').innerText=pct+'%';
+  if(G('goalCur')) G('goalCur').innerText=s.toLocaleString()+' ก้าว';
+  if(G('goalBar')) G('goalBar').style.width=pct+'%';
+  if(G('ringFill')) G('ringFill').style.strokeDashoffset=off;
+  if(G('ringGlow')) G('ringGlow').style.strokeDashoffset=off;
+}
+function updateCompanyBanner() {
+  var cg=S.companyGoal;
+  var G=function(id){return document.getElementById(id);};
+  if(G('cbPct')) G('cbPct').innerText=parseFloat(cg.pct||0).toFixed(1)+'%';
+  if(G('cbCur')) G('cbCur').innerText=Number(cg.total||0).toLocaleString();
+  if(G('cbFill')) G('cbFill').style.width=Math.max(0.2,parseFloat(cg.pct||0))+'%';
+}
+function setSensor(text, state) {
+  var dot=document.getElementById('sensorDot'),txt=document.getElementById('sensorTxt'),mode=document.getElementById('sensorMode');
+  if(dot){dot.className='sensor-dot';if(state==='on'){dot.classList.add('on');mode&&(mode.innerText='LIVE');}else if(state==='err'){dot.classList.add('err');mode&&(mode.innerText='ERR');}else{mode&&(mode.innerText='—');}}
+  if(txt) txt.innerText=text;
+}
+function showGoalSheet() {
+  var goals=[5000,7000,10000,12000],sel=S.dailyGoal;
+  var div=document.createElement('div');
+  div.innerHTML=`<div class="sheet-overlay"><div class="bottom-sheet"><div class="sheet-handle"></div><div class="sheet-title">🎯 เป้าหมายก้าวต่อวัน</div><div class="goal-grid">${goals.map(function(g){return`<div class="goal-chip ${S.dailyGoal===g?'sel':''}" data-val="${g}"><div class="goal-chip-num">${(g/1000).toFixed(0)}K</div><div class="goal-chip-lbl">${g.toLocaleString()} ก้าว</div></div>`;}).join('')}</div><button class="btn-sheet btn-sheet-neon" id="btnSaveGoal">บันทึกเป้าหมาย</button></div></div>`;
+  document.body.appendChild(div);
+  div.querySelectorAll('.goal-chip').forEach(function(el){
+    el.addEventListener('click',function(){div.querySelectorAll('.goal-chip').forEach(function(x){x.classList.remove('sel');});el.classList.add('sel');sel=parseInt(el.dataset.val);});
+  });
+  document.getElementById('btnSaveGoal').addEventListener('click',function(){
+    S.dailyGoal=sel;localStorage.setItem('rx_goal',sel);document.body.removeChild(div);updateRing();
+    Swal.fire({icon:'success',title:'บันทึกแล้ว!',text:'เป้าหมาย '+sel.toLocaleString()+' ก้าว',timer:1500,showConfirmButton:false});
+  });
+  div.querySelector('.sheet-overlay').addEventListener('click',function(e){if(e.target===this) document.body.removeChild(div);});
+}
+
+/* BOOT */
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     document.getElementById('loadingScreen').classList.add('hide');
     renderLogin();
-  }, 2200);
+  }, 2000);
 });
 </script>
 </body>
