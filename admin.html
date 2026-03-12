@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RX Admin — Step Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#060610; --bg-card:#0d0d1a; --bg-raised:#13131e; --bg-hover:#181828;
+      --border:rgba(255,255,255,0.07); --border-glow:rgba(99,211,255,0.20);
+      --neon:#63d3ff; --neon-dim:rgba(99,211,255,0.08); --neon-glow:rgba(99,211,255,0.35); --neon-mid:#38bdf8;
+      --lime:#a3e635; --lime-dim:rgba(163,230,53,0.08); --lime-glow:rgba(163,230,53,0.30);
+      --gold:#fbbf24; --gold-dim:rgba(251,191,36,0.08); --gold-glow:rgba(251,191,36,0.25);
+      --orange:#fb923c; --orange-dim:rgba(251,146,60,0.10);
+      --danger:#f87171; --success:#4ade80; --purple:#a78bfa;
+      --text-1:#f1f5f9; --text-2:#94a3b8; --text-3:#475569; --text-4:#1e293b;
+      --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:28px;
+      --sidebar:220px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Barlow','Sarabun',sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;overflow-x:hidden;}
+    button{cursor:pointer;font-family:inherit;} input,select{font-family:inherit;}
+    select option{background:var(--bg-card);color:var(--text-1);}
+
+    /* SCENE */
+    .scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+    .scene::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 80% 0%,rgba(99,211,255,0.06),transparent 60%),radial-gradient(ellipse 40% 30% at 0% 100%,rgba(163,230,53,0.04),transparent 60%);}
+    .scene-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(99,211,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(99,211,255,0.02) 1px,transparent 1px);background-size:40px 40px;}
+
+    /* LOADING */
+    .loading-screen{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .5s,visibility .5s;}
+    .loading-screen.hide{opacity:0;visibility:hidden;pointer-events:none;}
+    .loading-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--neon),var(--lime));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 36px var(--neon-glow);}
+    .loading-title{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .loading-sub{font-size:12px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;}
+
+    /* LOGIN */
+    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;z-index:1;}
+    .login-card{width:100%;max-width:400px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-xl);padding:40px 32px;position:relative;overflow:hidden;}
+    .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon),var(--lime),transparent);animation:shimmer 3s linear infinite;}
+    @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+    .admin-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:600;color:var(--purple);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;}
+    .login-title{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;line-height:.95;margin-bottom:4px;}
+    .login-title span{display:block;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .login-company{font-size:13px;color:var(--gold);font-weight:600;margin-bottom:24px;}
+    .field-group{margin-bottom:12px;}
+    .field-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-weight:600;}
+    .field-input{width:100%;background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-md);padding:13px 16px;font-size:15px;font-weight:600;color:var(--text-1);outline:none;transition:border-color .2s,box-shadow .2s;}
+    .field-input:focus{border-color:var(--neon);box-shadow:0 0 0 3px rgba(99,211,255,.10);}
+    .btn-admin-login{width:100%;padding:16px;background:linear-gradient(135deg,var(--neon),var(--neon-mid));color:#060610;border:none;border-radius:var(--r-md);font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:4px;transition:transform .15s,box-shadow .2s;}
+    .btn-admin-login:hover{box-shadow:0 0 36px var(--neon-glow);}
+    .btn-admin-login:active{transform:scale(.97);}
+    .btn-admin-login:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* LAYOUT */
+    .admin-layout{display:flex;min-height:100vh;position:relative;z-index:1;}
+    .sidebar{width:var(--sidebar);background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;overflow-y:auto;}
+    .sb-brand{padding:22px 18px 16px;border-bottom:1px solid var(--border);}
+    .sb-brand-lbl{font-size:9px;color:var(--text-3);letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+    .sb-brand-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
+    .sb-admin-info{padding:14px 18px;border-bottom:1px solid var(--border);}
+    .sb-avatar{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--neon),var(--lime));display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#060610;margin-bottom:8px;}
+    .sb-name{font-size:13px;font-weight:700;color:var(--text-1);}
+    .sb-role{font-size:10px;color:var(--purple);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+    .sb-nav{flex:1;padding:10px 8px;}
+    .sb-nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;transition:all .2s;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left;}
+    .sb-nav-item svg{width:16px;height:16px;flex-shrink:0;}
+    .sb-nav-item:hover{background:var(--bg-hover);color:var(--text-1);}
+    .sb-nav-item.active{background:linear-gradient(135deg,rgba(99,211,255,.12),rgba(163,230,53,.08));color:var(--neon);border:1px solid rgba(99,211,255,.15);}
+    .sb-pending-count{background:var(--gold);color:#060610;border-radius:99px;padding:1px 6px;font-size:9px;font-weight:900;margin-left:auto;}
+    .sb-logout{padding:14px 18px;border-top:1px solid var(--border);}
+    .btn-logout{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text-3);font-size:12px;font-weight:600;letter-spacing:.5px;transition:all .2s;}
+    .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* MAIN */
+    .main-content{margin-left:var(--sidebar);flex:1;padding:28px 28px 60px;overflow-y:auto;}
+    .page-header{margin-bottom:24px;}
+    .page-title{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:1px;line-height:1;}
+    .page-title span{background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .page-sub{font-size:13px;color:var(--text-2);margin-top:4px;}
+
+    /* FILTER BAR */
+    .filter-bar{display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:20px;flex-wrap:wrap;}
+    .filter-label{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+    .filter-select{background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;color:var(--text-1);outline:none;cursor:pointer;transition:border-color .2s;min-width:130px;}
+    .filter-select:focus{border-color:var(--neon);}
+    .filter-input{background:var(--bg-raised);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;color:var(--text-1);outline:none;transition:border-color .2s;min-width:130px;}
+    .filter-input:focus{border-color:var(--neon);}
+    .btn-filter{padding:9px 18px;background:linear-gradient(135deg,var(--neon),var(--neon-mid));color:#060610;border:none;border-radius:var(--r-sm);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;transition:opacity .2s;}
+    .btn-filter:hover{opacity:.85;}
+    .btn-reset{padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text-3);font-size:12px;font-weight:600;transition:all .2s;}
+    .btn-reset:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* KPI CARDS */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+    .kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;position:relative;overflow:hidden;transition:border-color .2s;}
+    .kpi-card:hover{border-color:var(--border-glow);}
+    .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:99px 99px 0 0;}
+    .kpi-neon::before{background:linear-gradient(90deg,var(--neon),var(--neon-mid));}
+    .kpi-lime::before{background:linear-gradient(90deg,var(--lime),#65a30d);}
+    .kpi-gold::before{background:linear-gradient(90deg,var(--gold),#f59e0b);}
+    .kpi-orange::before{background:linear-gradient(90deg,var(--orange),#ea580c);}
+    .kpi-purple::before{background:linear-gradient(90deg,var(--purple),#7c3aed);}
+    .kpi-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;}
+    .kpi-icon-neon{background:var(--neon-dim);}
+    .kpi-icon-lime{background:var(--lime-dim);}
+    .kpi-icon-gold{background:var(--gold-dim);}
+    .kpi-icon-orange{background:var(--orange-dim);}
+    .kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;line-height:1;margin-bottom:4px;}
+    .kpi-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;}
+    .kpi-sub{font-size:11px;color:var(--text-2);margin-top:4px;}
+
+    /* COMPANY GOAL CARD */
+    .goal-card-wide{background:var(--bg-card);border:1px solid rgba(99,211,255,0.15);border-radius:var(--r-lg);padding:22px 24px;margin-bottom:22px;position:relative;overflow:hidden;}
+    .goal-card-wide::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--neon),var(--lime));}
+    .gcw-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+    .gcw-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;}
+    .gcw-pct{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;background:linear-gradient(135deg,var(--neon),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
+    .gcw-track{height:14px;background:var(--bg-raised);border-radius:99px;overflow:hidden;margin-bottom:10px;}
+    .gcw-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--neon),var(--lime));box-shadow:0 0 14px var(--neon-glow);transition:width 1s cubic-bezier(.22,.68,0,1.2);min-width:2px;}
+    .gcw-feet{display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);}
+    .gcw-steps{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--neon);}
+
+    /* CHART */
+    .charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px;}
+    .chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;}
+    .chart-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;margin-bottom:16px;letter-spacing:.5px;}
+    .chart-title span{font-size:12px;color:var(--text-3);font-family:'Barlow',sans-serif;font-weight:400;margin-left:6px;}
+    .chart-wrap{position:relative;height:220px;}
+
+    /* PENDING TABLE */
+    .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+    .section-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.5px;}
+    .pending-count-badge{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(251,191,36,.25);border-radius:99px;padding:3px 12px;font-size:12px;font-weight:700;}
+    .tab-filter-row{display:flex;gap:6px;margin-bottom:14px;}
+    .tf-btn{padding:7px 16px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--text-3);font-size:12px;font-weight:600;transition:all .2s;cursor:pointer;}
+    .tf-btn.active{background:var(--neon-dim);color:var(--neon);border-color:rgba(99,211,255,.3);}
+    .table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;}
+    .table-scroll{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;}
+    thead tr{background:var(--bg-raised);border-bottom:1px solid var(--border);}
+    thead th{padding:12px 16px;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap;}
+    tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:var(--bg-raised);}
+    tbody td{padding:12px 16px;font-size:13px;vertical-align:middle;}
+    .td-steps{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--text-1);}
+    .td-userid{font-family:'Courier New',monospace;font-size:12px;color:var(--neon);background:var(--neon-dim);border-radius:6px;padding:2px 8px;}
+    .td-date{font-size:12px;color:var(--text-2);}
+    .td-sub{font-size:10px;color:var(--text-3);margin-top:2px;}
+    .status-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap;}
+    .sb-pending{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(251,191,36,.3);}
+    .sb-approved{background:rgba(74,222,128,.1);color:var(--success);border:1px solid rgba(74,222,128,.25);}
+    .sb-rejected{background:rgba(248,113,113,.1);color:var(--danger);border:1px solid rgba(248,113,113,.25);}
+    .action-btns{display:flex;gap:6px;}
+    .btn-approve{padding:6px 14px;background:rgba(74,222,128,.12);color:var(--success);border:1px solid rgba(74,222,128,.3);border-radius:8px;font-size:12px;font-weight:700;transition:all .2s;}
+    .btn-approve:hover{background:rgba(74,222,128,.2);}
+    .btn-reject{padding:6px 14px;background:rgba(248,113,113,.1);color:var(--danger);border:1px solid rgba(248,113,113,.25);border-radius:8px;font-size:12px;font-weight:700;transition:all .2s;}
+    .btn-reject:hover{background:rgba(248,113,113,.2);}
+    .btn-view-img{padding:6px 12px;background:var(--gold-dim);color:var(--gold);border:1px solid rgba(251,191,36,.25);border-radius:8px;font-size:12px;font-weight:700;transition:all .2s;}
+    .btn-view-img:hover{background:rgba(251,191,36,.15);}
+    .empty-row td{text-align:center;padding:50px 20px;color:var(--text-3);font-size:13px;}
+
+    /* SWAL */
+    .swal2-popup{background:var(--bg-card)!important;border:1px solid var(--border)!important;border-radius:22px!important;font-family:'Barlow','Sarabun',sans-serif!important;color:var(--text-1)!important;}
+    .swal2-title{color:var(--text-1)!important;font-family:'Barlow Condensed',sans-serif!important;letter-spacing:1px!important;}
+    .swal2-html-container{color:var(--text-2)!important;font-size:14px!important;}
+    .swal2-confirm{background:linear-gradient(135deg,var(--neon),var(--neon-mid))!important;color:#060610!important;font-family:'Barlow Condensed',sans-serif!important;font-size:16px!important;font-weight:800!important;letter-spacing:1.5px!important;border-radius:10px!important;padding:11px 26px!important;}
+    .swal2-cancel{background:var(--bg-raised)!important;color:var(--text-2)!important;border:1px solid var(--border)!important;border-radius:10px!important;padding:11px 26px!important;font-size:15px!important;font-weight:600!important;}
+    .swal2-deny{background:rgba(248,113,113,.15)!important;color:var(--danger)!important;border:1px solid rgba(248,113,113,.25)!important;border-radius:10px!important;padding:11px 26px!important;font-size:15px!important;font-weight:700!important;}
+    .swal2-loader{border-color:var(--neon) transparent var(--neon) transparent!important;}
+    .swal2-timer-progress-bar{background:linear-gradient(90deg,var(--neon),var(--lime))!important;}
+    .swal2-icon.swal2-success .swal2-success-ring{border-color:rgba(74,222,128,.3)!important;}
+    .swal2-icon.swal2-success [class^='swal2-success-line']{background:var(--success)!important;}
+    .swal2-textarea{background:var(--bg-raised)!important;border:1.5px solid var(--border)!important;border-radius:12px!important;color:var(--text-1)!important;font-family:'Barlow','Sarabun',sans-serif!important;}
+    .swal2-textarea:focus{border-color:var(--neon)!important;}
+    .spin-ring{display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:2px solid rgba(6,6,16,.2);border-top-color:#060610;animation:rotate .7s linear infinite;}
+    @keyframes rotate{to{transform:rotate(360deg)}}
+
+    /* MOBILE */
+    @media(max-width:900px){
+      .sidebar{transform:translateX(-100%);transition:transform .3s;}
+      .sidebar.open{transform:translateX(0);}
+      .main-content{margin-left:0;}
+      .kpi-grid{grid-template-columns:repeat(2,1fr);}
+      .charts-grid{grid-template-columns:1fr;}
+      .mobile-menu-btn{display:flex!important;}
+    }
+    .mobile-menu-btn{display:none;width:40px;height:40px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-sm);align-items:center;justify-content:center;position:fixed;top:16px;left:16px;z-index:60;cursor:pointer;}
+    .mobile-menu-btn svg{width:18px;height:18px;color:var(--text-1);}
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:45;backdrop-filter:blur(4px);}
+    .sidebar-overlay.show{display:block;}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideRight{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+  </style>
+</head>
+<body>
+<div class="scene"><div class="scene-grid"></div></div>
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-icon">🛡️</div>
+  <div class="loading-title">RX ADMIN</div>
+  <div class="loading-sub">Admin Dashboard — Loading...</div>
+</div>
+<div id="root"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+var GAS_URL = 'YOUR_GAS_URL_HERE'; // ← ใส่ GAS URL
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var A = {
+  admin: null,
+  stats: null,
+  records: [],
+  statusFilter: 'pending',
+  dateFilter: '',
+  monthFilter: '',
+  chart: null,
+  companyGoal: { total:0, goal:15000000, pct:0 },
+  view: 'dashboard'
+};
+
+/* ============================================================
+   JSONP
+   ============================================================ */
+var _cbId = 0;
+function callGAS(action, payload, onOk, onErr) {
+  var cb = '__adm_' + (++_cbId);
+  var timer = setTimeout(function() { delete window[cb]; onErr({message:'Timeout'}); }, 30000);
+  window[cb] = function(data) {
+    clearTimeout(timer); delete window[cb];
+    if (data && data.error) onErr({message:data.error});
+    else onOk(data);
+  };
+  var qs = 'action='+encodeURIComponent(action)+'&payload='+encodeURIComponent(JSON.stringify(payload))+'&callback='+cb;
+  var s = document.createElement('script');
+  s.src = GAS_URL + '?' + qs;
+  s.onerror = function(){ clearTimeout(timer); delete window[cb]; onErr({message:'เชื่อมต่อไม่ได้'}); };
+  document.body.appendChild(s);
+}
+
+/* ============================================================
+   RENDER: LOGIN
+   ============================================================ */
+function renderAdminLogin() {
+  document.getElementById('root').innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="admin-badge">🛡️ ADMIN ONLY</div>
+        <h1 class="login-title">RX<br><span>ADMIN</span></h1>
+        <div class="login-company">บริษัท อาร์เอ็กซ์ จำกัด — Dashboard</div>
+        <div class="field-group">
+          <div class="field-label">Admin ID</div>
+          <input type="text" id="adminId" class="field-input" placeholder="เช่น ADMIN001" autocomplete="off"/>
+        </div>
+        <div class="field-group">
+          <div class="field-label">รหัสผ่าน</div>
+          <input type="password" id="adminPw" class="field-input" placeholder="••••••••"/>
+        </div>
+        <button class="btn-admin-login" id="btnAdminLogin">เข้าสู่ Admin Panel</button>
+        <div style="margin-top:14px;text-align:center;font-size:11px;color:var(--text-3)">
+          ⚙️ ตั้งค่า Admin ใน Google Sheet คอลัมน์ F=password, G=admin
+        </div>
+      </div>
+    </div>`;
+
+  var btn=document.getElementById('btnAdminLogin');
+  btn.addEventListener('click', function() {
+    var id=document.getElementById('adminId').value.trim();
+    var pw=document.getElementById('adminPw').value.trim();
+    if (!id||!pw) { Swal.fire({icon:'warning',title:'กรุณากรอกข้อมูลให้ครบ',confirmButtonText:'ตกลง'}); return; }
+    btn.innerHTML='<span class="spin-ring"></span> กำลังตรวจสอบ...'; btn.disabled=true;
+    callGAS('adminLogin', {adminId:id, password:pw},
+      function(res) {
+        A.admin = res.admin;
+        renderAdminPanel();
+        loadDashboardData();
+      },
+      function(err) {
+        btn.innerHTML='เข้าสู่ Admin Panel'; btn.disabled=false;
+        Swal.fire({icon:'error',title:'เข้าสู่ระบบไม่สำเร็จ',text:err.message,confirmButtonText:'ลองใหม่'});
+      }
+    );
+  });
+  [document.getElementById('adminId'),document.getElementById('adminPw')].forEach(function(inp){
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter') btn.click();});
+  });
+}
+
+/* ============================================================
+   RENDER: ADMIN PANEL
+   ============================================================ */
+function renderAdminPanel() {
+  var pendingCount = A.records.filter(function(r){return r.status==='pending';}).length;
+  document.getElementById('root').innerHTML = `
+    <button class="mobile-menu-btn" id="mobileMenuBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="admin-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="sb-brand"><div class="sb-brand-lbl">RX Admin</div><div class="sb-brand-name">DASHBOARD</div></div>
+        <div class="sb-admin-info">
+          <div class="sb-avatar">${(A.admin.name||'A')[0].toUpperCase()}</div>
+          <div class="sb-name">${A.admin.name} ${A.admin.surname}</div>
+          <div class="sb-role">⚡ Administrator</div>
+        </div>
+        <nav class="sb-nav">
+          <button class="sb-nav-item ${A.view==='dashboard'?'active':''}" id="navDash">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            ภาพรวม
+          </button>
+          <button class="sb-nav-item ${A.view==='pending'?'active':''}" id="navPending">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            รออนุมัติ
+            ${pendingCount>0?`<span class="sb-pending-count">${pendingCount}</span>`:''}
+          </button>
+          <button class="sb-nav-item ${A.view==='all'?'active':''}" id="navAll">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ทุกรายการ
+          </button>
+        </nav>
+        <div class="sb-logout"><button class="btn-logout" id="btnAdminLogout">🚪 ออกจากระบบ</button></div>
+      </aside>
+      <main class="main-content" id="mainContent">
+        ${A.view==='dashboard' ? renderDashboardView() : renderPendingView()}
+      </main>
+    </div>`;
+
+  bindAdminEvents();
+}
+
+/* ============================================================
+   DASHBOARD VIEW
+   ============================================================ */
+function renderDashboardView() {
+  var s = A.stats || {};
+  var cpct = parseFloat(s.goalPct||0);
+  return `
+    <div class="page-header">
+      <div class="page-title">ภาพ<span>รวม</span></div>
+      <div class="page-sub">สถิติการนับก้าวของพนักงาน บริษัท อาร์เอ็กซ์ จำกัด</div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <span class="filter-label">🗓 กรองข้อมูล:</span>
+      <input type="date" id="filterDate" class="filter-input" value="${A.dateFilter}" placeholder="วันที่"/>
+      <input type="month" id="filterMonth" class="filter-input" value="${A.monthFilter}" placeholder="เดือน"/>
+      <button class="btn-filter" id="btnApplyFilter">ค้นหา</button>
+      <button class="btn-reset" id="btnResetFilter">รีเซ็ต</button>
+    </div>
+
+    <!-- COMPANY GOAL -->
+    <div class="goal-card-wide">
+      <div class="gcw-top">
+        <div><div class="gcw-title">🏆 เป้าหมายบริษัท</div><div style="font-size:12px;color:var(--text-2);margin-top:3px">พนักงาน ~300 คน · เป้ารวม 15,000,000 ก้าว</div></div>
+        <div class="gcw-pct" id="gcwPct">${cpct.toFixed(1)}%</div>
+      </div>
+      <div class="gcw-track"><div class="gcw-fill" id="gcwFill" style="width:${Math.max(0.2,cpct)}%"></div></div>
+      <div class="gcw-feet">
+        <span><span class="gcw-steps" id="gcwSteps">${Number(s.totalSteps||0).toLocaleString()}</span> ก้าวรวม</span>
+        <span style="font-size:12px;color:var(--text-3)">เป้า 15,000,000 ก้าว</span>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid" id="kpiGrid">
+      ${renderKpiCards(s)}
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">📈 ก้าวรายวัน <span>Daily Steps</span></div>
+        <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🎯 สถานะรายการ <span>Breakdown</span></div>
+        <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
+      </div>
+    </div>`;
+}
+
+function renderKpiCards(s) {
+  var cards = [
+    { icon:'👟', cls:'neon', val: Number(s.totalSteps||0).toLocaleString(), label:'ก้าวรวมทั้งหมด', sub:'Approved steps' },
+    { icon:'👥', cls:'lime', val: (s.activeUsers||0)+' / '+(s.totalEmployees||300), label:'พนักงานที่มีก้าว', sub:'Active users' },
+    { icon:'⏳', cls:'gold', val: s.pendingCount||0, label:'รออนุมัติ', sub:'Pending approvals' },
+    { icon:'📊', cls:'orange', val: (s.goalPct||0)+'%', label:'% บรรลุเป้า', sub:'Company goal progress' },
+  ];
+  return cards.map(function(c) {
+    return `<div class="kpi-card kpi-${c.cls}">
+      <div class="kpi-icon kpi-icon-${c.cls}">${c.icon}</div>
+      <div class="kpi-val" style="color:var(--${c.cls==='neon'?'neon':c.cls==='lime'?'lime':c.cls==='gold'?'gold':'orange'})">${c.val}</div>
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-sub">${c.sub}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   PENDING VIEW
+   ============================================================ */
+function renderPendingView() {
+  var statusMap = { pending:'รออนุมัติ', approved:'อนุมัติแล้ว', all:'ทั้งหมด' };
+  var filtered = A.records;
+  return `
+    <div class="page-header">
+      <div class="page-title">${A.view==='all'?'ทุก<span>รายการ</span>':'รอ<span>อนุมัติ</span>'}</div>
+      <div class="page-sub">ตรวจสอบและอนุมัติรายการที่พนักงานส่งรูปภาพ</div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <span class="filter-label">🗓 กรองข้อมูล:</span>
+      <input type="date" id="filterDateP" class="filter-input" value="${A.dateFilter}" placeholder="วันที่"/>
+      <input type="month" id="filterMonthP" class="filter-input" value="${A.monthFilter}" placeholder="เดือน"/>
+      <button class="btn-filter" id="btnApplyFilterP">ค้นหา</button>
+      <button class="btn-reset" id="btnResetFilterP">รีเซ็ต</button>
+    </div>
+
+    <!-- STATUS TABS -->
+    <div class="tab-filter-row">
+      ${['pending','approved','all'].map(function(s){ return `<button class="tf-btn ${A.statusFilter===s?'active':''}" data-s="${s}">${s==='pending'?'⏳ รออนุมัติ':s==='approved'?'✅ อนุมัติแล้ว':'📋 ทั้งหมด'}</button>`; }).join('')}
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">รายการ ${statusMap[A.statusFilter]||'ทั้งหมด'}</div>
+      <span class="pending-count-badge" id="recordsCountBadge">${filtered.length} รายการ</span>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>#</th><th>รหัสพนักงาน</th><th>วันที่ส่ง</th><th>จำนวนก้าว</th><th>Kcal</th><th>สถานะ</th><th>Admin Note</th><th>การดำเนินการ</th>
+          </tr></thead>
+          <tbody id="pendingTableBody">
+            ${renderTableRows(filtered)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderTableRows(records) {
+  if (!records.length) return '<tr class="empty-row"><td colspan="8">📭 ไม่มีรายการ</td></tr>';
+  return records.map(function(r, i) {
+    var scls = r.status==='approved'?'sb-approved':r.status==='rejected'?'sb-rejected':'sb-pending';
+    var slbl = r.status==='approved'?'✅ อนุมัติ':r.status==='rejected'?'❌ ปฏิเสธ':'⏳ รออนุมัติ';
+    var actions = r.status==='pending'
+      ? `<div class="action-btns">
+          ${r.hasImage?`<button class="btn-view-img" onclick="viewImage('${r.id}')">🖼 ดูรูป</button>`:''}
+          <button class="btn-approve" onclick="doApprove('${r.id}')">✅ อนุมัติ</button>
+          <button class="btn-reject" onclick="doReject('${r.id}')">❌ ปฏิเสธ</button>
+        </div>`
+      : `<span style="font-size:11px;color:var(--text-3)">${r.reviewedBy||''}</span>`;
+    return `<tr>
+      <td style="color:var(--text-3);font-size:12px">${i+1}</td>
+      <td><span class="td-userid">${r.userId}</span></td>
+      <td><div class="td-date">${r.date}</div><div class="td-sub">${r.submittedAt||''}</div></td>
+      <td class="td-steps">${Number(r.steps||0).toLocaleString()}</td>
+      <td style="color:var(--orange)">${parseFloat((r.steps||0)*.04).toFixed(1)}</td>
+      <td><span class="status-badge ${scls}">${slbl}</span></td>
+      <td style="font-size:11px;color:var(--text-2);max-width:120px">${r.adminNote||'—'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   BIND ADMIN EVENTS
+   ============================================================ */
+function bindAdminEvents() {
+  // Sidebar nav
+  var navDash=document.getElementById('navDash');
+  var navPending=document.getElementById('navPending');
+  var navAll=document.getElementById('navAll');
+  if(navDash) navDash.addEventListener('click',function(){A.view='dashboard';A.statusFilter='pending';renderAdminPanel();loadDashboardData();});
+  if(navPending) navPending.addEventListener('click',function(){A.view='pending';A.statusFilter='pending';renderAdminPanel();loadPendingData();});
+  if(navAll) navAll.addEventListener('click',function(){A.view='all';A.statusFilter='all';renderAdminPanel();loadPendingData();});
+  document.getElementById('btnAdminLogout').addEventListener('click', function(){
+    Swal.fire({title:'ออกจากระบบ?',icon:'question',showCancelButton:true,confirmButtonText:'ออก',cancelButtonText:'ยกเลิก'})
+    .then(function(r){if(r.isConfirmed){A.admin=null;A.stats=null;A.records=[];renderAdminLogin();}});
+  });
+
+  // Mobile menu
+  var mobileBtn=document.getElementById('mobileMenuBtn');
+  var sidebarEl=document.getElementById('sidebar');
+  var overlay=document.getElementById('sidebarOverlay');
+  if(mobileBtn){
+    mobileBtn.addEventListener('click',function(){sidebarEl.classList.add('open');overlay.classList.add('show');});
+    overlay.addEventListener('click',function(){sidebarEl.classList.remove('open');overlay.classList.remove('show');});
+  }
+
+  // Dashboard filters
+  var btnApply=document.getElementById('btnApplyFilter'), btnReset=document.getElementById('btnResetFilter');
+  if(btnApply) btnApply.addEventListener('click',function(){ A.dateFilter=document.getElementById('filterDate').value||''; A.monthFilter=document.getElementById('filterMonth').value||''; loadDashboardData(); });
+  if(btnReset) btnReset.addEventListener('click',function(){ A.dateFilter=''; A.monthFilter=''; document.getElementById('filterDate').value=''; document.getElementById('filterMonth').value=''; loadDashboardData(); });
+
+  // Pending filters
+  var btnApplyP=document.getElementById('btnApplyFilterP'), btnResetP=document.getElementById('btnResetFilterP');
+  if(btnApplyP) btnApplyP.addEventListener('click',function(){ A.dateFilter=document.getElementById('filterDateP').value||''; A.monthFilter=document.getElementById('filterMonthP').value||''; loadPendingData(); });
+  if(btnResetP) btnResetP.addEventListener('click',function(){ A.dateFilter=''; A.monthFilter=''; document.getElementById('filterDateP').value=''; document.getElementById('filterMonthP').value=''; loadPendingData(); });
+
+  // Status filter tabs
+  document.querySelectorAll('.tf-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){A.statusFilter=btn.dataset.s;A.view=A.statusFilter==='all'?'all':'pending';loadPendingData();});
+  });
+}
+
+/* ============================================================
+   LOAD DATA
+   ============================================================ */
+function loadDashboardData() {
+  var main = document.getElementById('mainContent');
+  callGAS('getAdminStats', {date:A.dateFilter, month:A.monthFilter},
+    function(res) {
+      A.stats = res;
+      if (A.view==='dashboard') {
+        main.innerHTML = renderDashboardView();
+        bindAdminEvents();
+        // Update KPI
+        document.getElementById('kpiGrid').innerHTML = renderKpiCards(res);
+        drawCharts(res);
+      }
+    },
+    function(err) { Swal.fire({icon:'error',title:'โหลดข้อมูลไม่ได้',text:err.message}); }
+  );
+}
+
+function loadPendingData() {
+  callGAS('getPending', {status:A.statusFilter, date:A.dateFilter, month:A.monthFilter},
+    function(res) {
+      A.records = res.records||[];
+      if (A.view==='pending'||A.view==='all') {
+        var mc = document.getElementById('mainContent');
+        mc.innerHTML = renderPendingView();
+        bindAdminEvents();
+        // Update sidebar count
+        var sbc=document.querySelector('.sb-pending-count');
+        var pc=A.records.filter(function(r){return r.status==='pending';}).length;
+        if(sbc) sbc.innerText=pc;
+      }
+    },
+    function(err) { Swal.fire({icon:'error',title:'โหลดข้อมูลไม่ได้',text:err.message}); }
+  );
+}
+
+/* ============================================================
+   CHARTS (Chart.js)
+   ============================================================ */
+function drawCharts(stats) {
+  var labels = stats.chartLabels||[];
+  var values = stats.chartValues||[];
+
+  // Daily chart
+  var ctxD = document.getElementById('chartDaily');
+  if (ctxD) {
+    if (A.chart) A.chart.destroy();
+    A.chart = new Chart(ctxD, {
+      type: 'bar',
+      data: {
+        labels: labels.map(function(l){ return l.slice(5); }), // MM-DD
+        datasets: [{
+          label: 'ก้าว', data: values,
+          backgroundColor: 'rgba(99,211,255,0.3)',
+          borderColor: '#63d3ff', borderWidth: 1.5, borderRadius: 6,
+          hoverBackgroundColor: 'rgba(99,211,255,0.5)'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend:{ display:false } },
+        scales: {
+          x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#475569',font:{size:10}} },
+          y: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#475569',font:{size:10},callback:function(v){return (v/1000).toFixed(0)+'K';}} }
+        }
+      }
+    });
+  }
+
+  // Status donut
+  var ctxS = document.getElementById('chartStatus');
+  if (ctxS) {
+    var pending=stats.pendingCount||0, active=stats.activeUsers||0, total=stats.totalEmployees||300;
+    var inactive = Math.max(0, total - active);
+    new Chart(ctxS, {
+      type: 'doughnut',
+      data: {
+        labels: ['มีก้าวแล้ว','ยังไม่มีก้าว','รออนุมัติ'],
+        datasets: [{ data:[active, inactive, pending], backgroundColor:['rgba(99,211,255,0.7)','rgba(71,85,105,0.5)','rgba(251,191,36,0.7)'], borderColor:['#63d3ff','#475569','#fbbf24'], borderWidth:1.5, hoverOffset:6 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, cutout:'65%',
+        plugins: { legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:12}} }
+      }
+    });
+  }
+}
+
+/* ============================================================
+   APPROVE / REJECT
+   ============================================================ */
+function viewImage(id) {
+  Swal.fire({title:'กำลังโหลดรูปภาพ...',allowOutsideClick:false,showConfirmButton:false,didOpen:function(){Swal.showLoading();}});
+  callGAS('getPendingImage', {pendingId:id},
+    function(res) {
+      if (!res.imageBase64) { Swal.fire({icon:'warning',title:'ไม่มีรูปภาพ'}); return; }
+      Swal.fire({
+        title:'🖼️ รูปภาพที่อัปโหลด',
+        html:`<img src="data:image/jpeg;base64,${res.imageBase64}" style="max-width:100%;max-height:400px;border-radius:12px;margin-top:8px"/>`,
+        confirmButtonText:'ปิด', width:'600px'
+      });
+    },
+    function(err){ Swal.fire({icon:'error',title:'โหลดรูปไม่ได้',text:err.message}); }
+  );
+}
+
+function doApprove(id) {
+  Swal.fire({
+    title:'✅ อนุมัติรายการนี้?',
+    html:'<div style="margin-top:8px"><textarea id="approveNote" class="swal2-textarea" placeholder="หมายเหตุ (ไม่บังคับ)" rows="2" style="width:100%"></textarea></div>',
+    showCancelButton:true, confirmButtonText:'✅ อนุมัติ', cancelButtonText:'ยกเลิก',
+    preConfirm: function() { return document.getElementById('approveNote').value||''; }
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+    Swal.fire({title:'กำลังอนุมัติ...',allowOutsideClick:false,showConfirmButton:false,didOpen:function(){Swal.showLoading();}});
+    callGAS('approve', {id:id, adminId:A.admin.id, note:r.value},
+      function() {
+        Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',timer:2000,timerProgressBar:true,showConfirmButton:false});
+        loadPendingData(); loadDashboardData();
+      },
+      function(err){ Swal.fire({icon:'error',title:'เกิดข้อผิดพลาด',text:err.message}); }
+    );
+  });
+}
+
+function doReject(id) {
+  Swal.fire({
+    title:'❌ ปฏิเสธรายการนี้?',
+    html:'<div style="margin-top:8px"><textarea id="rejectNote" class="swal2-textarea" placeholder="เหตุผล (แนะนำให้ระบุ)" rows="3" style="width:100%"></textarea></div>',
+    showCancelButton:true, confirmButtonText:'❌ ปฏิเสธ', cancelButtonText:'ยกเลิก',
+    confirmButtonColor:'#f87171',
+    preConfirm: function() { return document.getElementById('rejectNote').value||''; }
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+    Swal.fire({title:'กำลังปฏิเสธ...',allowOutsideClick:false,showConfirmButton:false,didOpen:function(){Swal.showLoading();}});
+    callGAS('reject', {id:id, adminId:A.admin.id, note:r.value},
+      function() {
+        Swal.fire({icon:'success',title:'ปฏิเสธแล้ว',timer:2000,timerProgressBar:true,showConfirmButton:false});
+        loadPendingData();
+      },
+      function(err){ Swal.fire({icon:'error',title:'เกิดข้อผิดพลาด',text:err.message}); }
+    );
+  });
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    document.getElementById('loadingScreen').classList.add('hide');
+    renderAdminLogin();
+  }, 1200);
+});
+</script>
+</body>
+</html>
